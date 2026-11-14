@@ -148,3 +148,18 @@ describe('save migration', () => {
     simulate(m, 5); // runs fine after migration
   });
 });
+
+describe('inline sinks', () => {
+  it('a ward keeps a reserve of spores and passes the surplus on to the Heart', () => {
+    const s = lab();
+    const hx = s.heartX, hy = s.heartY;
+    put(s, hx, hy - 4, 'sporangium', 2);
+    put(s, hx, hy - 3, 'conduit', 2);
+    const w = put(s, hx, hy - 2, 'ward', 2); // inline, facing the Heart
+    put(s, hx, hy - 1, 'conduit', 2);
+    simulate(s, 60);
+    expect(w.store[1]).toBeGreaterThan(3.5); // reserve topped up (cap 4)
+    expect(s.intake[1]).toBeGreaterThan(0.5); // surplus reached the Heart
+    expect(s.stats.run.ruptures).toBe(0);
+  });
+});

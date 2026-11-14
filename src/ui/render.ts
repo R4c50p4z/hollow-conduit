@@ -302,6 +302,7 @@ function drawBuilding(g: CanvasRenderingContext2D, s: SimState, x: number, y: nu
       break;
     }
     case 'ward': {
+      tube(g, cx, cy, ex, ey, T);
       g.strokeStyle = P.spore;
       g.fillStyle = '#2a1f17';
       g.lineWidth = 1.5;
@@ -317,6 +318,7 @@ function drawBuilding(g: CanvasRenderingContext2D, s: SimState, x: number, y: nu
       break;
     }
     case 'cauterizer': {
+      tube(g, cx, cy, ex, ey, T);
       g.fillStyle = '#2a1f17';
       g.strokeStyle = P.bile;
       g.lineWidth = 1.5;

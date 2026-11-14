@@ -35,6 +35,8 @@ export function tick(s: SimState, dt: number) {
 }
 
 const sum = (b: number[]) => b[0] + b[1] + b[2] + b[3];
+/** The resource each inline sink burns. */
+const FUEL = { ward: R.spore, cauterizer: R.bile } as const;
 
 // --- 1. Production -----------------------------------------------------------------------
 
@@ -138,12 +140,10 @@ function accept(s: SimState, tx: number, ty: number, r: number, amount: number, 
       space = F.storeCap(b.kind, b.tier, m) - b.store[r] - b.incoming[r];
       break;
     case 'cauterizer':
-      if (r !== R.bile) return 0;
-      space = F.storeCap(b.kind, b.tier, m) - b.store[r] - b.incoming[r];
-      break;
     case 'ward':
-      if (r !== R.spore) return 0;
-      space = F.storeCap(b.kind, b.tier, m) - b.store[r] - b.incoming[r];
+      // Inline sinks: keep a reserve of their fuel and let the surplus pass through (see transfer()).
+      if (r !== FUEL[b.kind]) return 0;
+      space = 2 * F.storeCap(b.kind, b.tier, m) - b.store[r] - b.incoming[r];
       break;
     case 'heart':
       space = F.heartIntakeCap(b.tier) * C.HEART_BUFFER_SECONDS - b.store[r] - b.incoming[r];
@@ -220,6 +220,17 @@ function transfer(s: SimState, dt: number, pushed: Float64Array) {
             pushed[i] += got;
           }
         }
+        break;
+      }
+      case 'ward':
+      case 'cauterizer': {
+        const r = FUEL[b.kind];
+        const surplus = b.store[r] - F.storeCap(b.kind, b.tier, m);
+        if (surplus <= 1e-9) break;
+        const budget = Math.min(surplus, F.conduitThroughput('conduit', b.tier, t.rot, m) * dt);
+        const got = accept(s, x + DX[b.dir], y + DY[b.dir], r, budget, opposite(b.dir));
+        b.store[r] -= got;
+        pushed[i] += got;
         break;
       }
       case 'tap':

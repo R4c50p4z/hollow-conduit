@@ -6,6 +6,9 @@ cracks your vessels, rot breeds wherever flow stagnates, and leeches crawl out o
 
 **Systems design and all formulas:** [`docs/DESIGN.md`](docs/DESIGN.md)
 
+**Documentación en castellano:** [`docs/es/LEEME.md`](docs/es/LEEME.md): guía de juego, mecánicas con fórmulas,
+estructuras, estadísticas, logros y arquitectura. El juego se puede jugar en castellano o en inglés (⚙ Ajustes).
+
 ## Run it
 
 ```bash
@@ -34,6 +37,8 @@ npm run ios:open   # open in Xcode, run on device/simulator
   pressure and rot.
 - **Tap leeches** to strike them. Build **Thorn Wards** and feed them spores before the leeches outgrow your fingers.
 - At 1M essence in a cycle you can **Metamorphose**: lose the cavern, gain mutagen, and mutate the Heart's exponent.
+- **▤** opens the statistics panel: live network health, per-cycle and all-time counters, charts, cycle history and
+  32 achievements (+2% essence each).
 
 ## Layout
 

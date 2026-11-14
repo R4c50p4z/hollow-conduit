@@ -119,3 +119,60 @@ code { font-family: var(--mono); font-size: 12px; color: var(--vitriol); }
 
 @keyframes fade { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes throb { 50% { opacity: 0.55; } }
+
+/* --- v0.2: settings, stats, charts ------------------------------------------------- */
+.hud-btns { display: flex; gap: 6px; }
+.seg { display: flex; gap: 6px; flex-wrap: wrap; }
+.act.on { border-color: var(--essence); color: var(--essence); }
+.sheet h3 { font-size: 15px; }
+
+.sheet.stats { max-height: 92vh; display: flex; flex-direction: column; padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+.stats-head { display: flex; justify-content: space-between; align-items: center; }
+.tabs { display: flex; gap: 4px; overflow-x: auto; margin: 6px 0 8px; scrollbar-width: none; flex: 0 0 auto; }
+.tabs::-webkit-scrollbar { display: none; }
+.tabs button { padding: 6px 10px; border: 1px solid var(--edge); font-size: 13px; color: var(--sepia); white-space: nowrap; }
+.tabs button.on { color: var(--essence); border-color: var(--essence); }
+.stats-body { overflow-y: auto; flex: 1; min-height: 0; -webkit-overflow-scrolling: touch; }
+.ssec { margin-bottom: 14px; }
+.ssec h4 { margin: 0 0 4px; font-weight: normal; color: var(--ichor); font-size: 14px; letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid var(--edge); padding-bottom: 3px; }
+.srow { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 3px 0; border-bottom: 1px dotted #221b15; }
+.srow span { color: var(--sepia); }
+.srow b { font-weight: normal; font-family: var(--mono); font-size: 12px; color: var(--bone); text-align: right; }
+.srow.sub-row span { padding-left: 12px; font-size: 12px; }
+.resvals { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.resvals span { display: inline-flex; align-items: center; gap: 3px; color: var(--bone) !important; }
+.resvals i, .share-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; }
+
+.chart { margin: 0 0 12px; }
+.chart figcaption { font-size: 12px; color: var(--bone); margin-bottom: 2px; }
+.chart svg { width: 100%; height: auto; display: block; touch-action: none; background: #0f0c09; border: 1px solid var(--edge); }
+.chart .grid { stroke: #2a221b; stroke-width: 1; }
+.chart .axis { fill: var(--sepia); font: 9px var(--mono); }
+.chart .cross { stroke: var(--sepia); stroke-width: 1; stroke-dasharray: 2 2; }
+.chart .tip { fill: #0b0907; stroke: var(--edge); }
+.chart .tip-v { fill: var(--essence); font: 11px var(--mono); }
+.chart .tip-t { fill: var(--sepia); font: 9px var(--mono); }
+.charts-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 8px; }
+
+.share svg { width: 100%; height: 16px; display: block; }
+.share-legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 12px; margin-top: 6px; color: var(--sepia); }
+.share-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.share-legend b { font-weight: normal; color: var(--bone); font-family: var(--mono); }
+
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; font-family: var(--mono); font-size: 11px; width: 100%; }
+th, td { padding: 4px 6px; border-bottom: 1px solid #221b15; text-align: right; white-space: nowrap; }
+th { color: var(--sepia); font-weight: normal; position: sticky; top: 0; background: var(--panel); }
+th:first-child, td:first-child { text-align: left; }
+
+.ach-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.ach { border: 1px solid var(--edge); padding: 8px; display: flex; flex-direction: column; gap: 2px; opacity: 0.45; }
+.ach.on { opacity: 1; border-color: #5a4a33; box-shadow: inset 0 0 14px rgba(201, 194, 255, 0.07); }
+.ach b { font-weight: normal; color: var(--essence); font-size: 13px; }
+.ach span { font-size: 11px; color: var(--sepia); }
+.ach small { font-size: 10px; color: var(--dim); font-family: var(--mono); }
+.ev-achievement { color: var(--vitriol); border-color: rgba(201, 194, 255, 0.5); }
+.ev-leech_sated { color: var(--sepia); }
+.tools { grid-template-columns: repeat(5, 1fr); }
+.tool { padding: 6px 5px; }
+.tool-name { font-size: 11px; }

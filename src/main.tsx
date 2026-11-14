@@ -9,6 +9,8 @@ async function boot() {
   useUI.setState({ loading: 0 });
   const report = await host.load((f) => useUI.setState({ loading: f }));
   useUI.setState({ loading: null, offline: report && report.seconds > 30 ? report : null });
+  host.state.stats.sessions++;
+  document.documentElement.lang = useUI.getState().lang;
   host.start();
   if (!report && host.state.time === 0) useUI.setState({ panel: 'help' });
 }

@@ -60,8 +60,8 @@ for (let i = 0; i < steps; i++) {
         `run ${fmt(s.runEssence).padStart(9)}`,
         `heart t${heart.tier}`,
         `in [${s.intake.map((v) => v.toFixed(1)).join(', ')}]`,
-        `rupt ${s.stats.ruptures}`,
-        `kills ${s.stats.leechesKilled}/${s.wave}w`,
+        `rupt ${s.stats.run.ruptures}`,
+        `kills ${s.stats.run.leechesKilled}/${s.wave}w`,
         `mutagen→${F.mutagenYield(s.runEssence, s.depth).toString()}`,
       ].join('  '),
     );

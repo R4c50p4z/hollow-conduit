@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { host } from '../game/host';
 import { useUI } from '../game/store';
+import { reasonText } from '../i18n/game';
 import type { Dir } from '../sim';
 import { computeLayout, draw, type Layout } from './render';
 
@@ -91,7 +92,7 @@ export function Board() {
     const t = s.tiles[p.y * s.w + p.x];
     if (ui.tool && !t.building) {
       const r = host.dispatch({ t: 'build', ...p, kind: ui.tool, dir: ui.dir });
-      if (!r.ok) ui.say(r.reason);
+      if (!r.ok) ui.say(reasonText(r));
       else drag.current.built = true;
     }
   };
@@ -112,7 +113,7 @@ export function Board() {
     if (!t.building) {
       const r = host.dispatch({ t: 'build', ...p, kind: 'conduit', dir });
       if (!r.ok) {
-        ui.say(r.reason);
+        ui.say(reasonText(r));
         d.last = null;
         return;
       }

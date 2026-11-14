@@ -1,14 +1,16 @@
 import { host } from '../game/host';
 import { useUI } from '../game/store';
+import { useT } from '../i18n';
+import { kindBlurb, kindShort } from '../i18n/game';
 import { nextBuildCost, type Dir } from '../sim';
-import { BUILDABLE, KINDS } from '../sim/config';
+import { BUILDABLE } from '../sim/config';
 import { fmt } from './format';
 
 const ARROWS = ['↑', '→', '↓', '←'];
-const SHORT: Partial<Record<string, string>> = { reactor: 'Womb', cauterizer: 'Cauterizer', sporangium: 'Sporangium', ward: 'Ward' };
 
 export function BuildBar() {
   useUI((u) => u.frame);
+  const t = useT();
   const { tool, dir, overlay, set } = useUI();
   const s = host.state;
   return (
@@ -23,24 +25,28 @@ export function BuildBar() {
               className={`tool ${tool === k ? 'on' : ''} ${afford ? '' : 'poor'}`}
               onClick={() => set({ tool: tool === k ? null : k, selected: null })}
             >
-              <span className="tool-name">{SHORT[k] ?? KINDS[k].name}</span>
+              <span className="tool-name">{kindShort(k)}</span>
               <span className="tool-cost">{fmt(cost)}</span>
             </button>
           );
         })}
       </div>
       <div className="bar-row">
-        <span className="hint">{tool ? KINDS[tool].blurb + (tool === 'conduit' ? ' Drag to lay a line.' : '') : 'Pick a structure, or tap the cavern to inspect.'}</span>
-        <button className="sq" aria-label="Facing" onClick={() => set({ dir: ((dir + 1) % 4) as Dir })}>
+        <span className="hint">{tool ? kindBlurb(tool) : t('build.idle')}</span>
+        <button className="sq" aria-label={t('build.facing')} onClick={() => set({ dir: ((dir + 1) % 4) as Dir })}>
           {ARROWS[dir]}
         </button>
         <button
           className={`sq ${overlay !== 'none' ? 'on' : ''}`}
+          aria-label={t('build.overlay')}
           onClick={() => set({ overlay: overlay === 'none' ? 'pressure' : overlay === 'pressure' ? 'rot' : 'none' })}
         >
           {overlay === 'none' ? '◎' : overlay === 'pressure' ? 'P' : 'R'}
         </button>
-        <button className="sq" onClick={() => set({ panel: 'help' })}>
+        <button className="sq" aria-label={t('settings.title')} onClick={() => set({ panel: 'settings' })}>
+          ⚙
+        </button>
+        <button className="sq" aria-label="?" onClick={() => set({ panel: 'help' })}>
           ?
         </button>
       </div>

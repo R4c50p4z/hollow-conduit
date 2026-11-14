@@ -19,3 +19,14 @@ export const P = {
 } as const;
 
 export const RES_COLOR = [P.ichor, P.spore, P.bile, P.vitriol] as const;
+
+/**
+ * Chart variants of the resource colours, validated with the dataviz palette checker on the
+ * panel surface (#120e0b, dark): lightness band, chroma floor, ≥3:1 contrast and adjacent-pair
+ * normal-vision ΔE ≥ 15 all pass; adjacent CVD ΔE is 7.3 (warn band), so every use carries
+ * direct labels. Red↔green fails CVD as an *all-pairs* set, so per-resource time series are
+ * drawn as small multiples (one series per chart) rather than four overlapping lines.
+ */
+export const CHART_RES = ['#e0465a', '#c9821f', '#3a9e6e', '#8a7cf0'] as const;
+/** Single-series line colour for non-resource metrics. */
+export const CHART_INK = '#e8dcc0';

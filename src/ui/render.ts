@@ -158,7 +158,8 @@ function drawBuilding(g: CanvasRenderingContext2D, s: SimState, x: number, y: nu
         const nx = x + DX[d], ny = y + DY[d];
         if (nx < 0 || ny < 0 || nx >= s.w || ny >= s.h) continue;
         const nb = s.tiles[ny * s.w + nx].building;
-        const feeds = nb && nb.kind !== 'heart' && nb.kind !== 'router' && nx + DX[nb.dir] === x && ny + DY[nb.dir] === y;
+        const feeds =
+          nb && (nb.kind === 'junction' || (nb.kind !== 'heart' && nb.kind !== 'router' && nx + DX[nb.dir] === x && ny + DY[nb.dir] === y));
         const routerOut = b.kind === 'router' && nb && !feeds;
         if (feeds || routerOut) tube(g, cx, cy, cx + DX[d] * T * 0.5, cy + DY[d] * T * 0.5, T);
       }
@@ -200,6 +201,36 @@ function drawBuilding(g: CanvasRenderingContext2D, s: SimState, x: number, y: nu
         g.arc(cx, cy, T * 0.14, 0, Math.PI * 2);
         g.fill();
         g.globalAlpha = 1;
+      }
+      break;
+    }
+    case 'junction': {
+      // Horizontal pipe underneath, vertical pipe arching over it.
+      tube(g, cx - T * 0.5, cy, cx + T * 0.5, cy, T);
+      g.fillStyle = P.rock;
+      g.fillRect(cx - T * 0.2, cy - T * 0.5, T * 0.4, T);
+      tube(g, cx, cy - T * 0.5, cx, cy + T * 0.5, T);
+      g.strokeStyle = P.sepia;
+      g.lineWidth = 1.5;
+      g.beginPath();
+      g.arc(cx, cy, T * 0.2, 0, Math.PI * 2);
+      g.stroke();
+      if (b.lanes) {
+        for (let d = 0; d < 4; d++) {
+          const lane = b.lanes[d];
+          let lr = -1, lv = 0;
+          for (let r = 0; r < 4; r++) if (lane[r] > lv) { lv = lane[r]; lr = r; }
+          if (lr < 0) continue;
+          g.strokeStyle = RES_COLOR[lr];
+          g.lineWidth = T * 0.08;
+          g.setLineDash([T * 0.1, T * 0.1]);
+          g.lineDashOffset = -time * T;
+          g.beginPath();
+          g.moveTo(cx - DX[d] * T * 0.5, cy - DY[d] * T * 0.5);
+          g.lineTo(cx + DX[d] * T * 0.5, cy + DY[d] * T * 0.5);
+          g.stroke();
+          g.setLineDash([]);
+        }
       }
       break;
     }

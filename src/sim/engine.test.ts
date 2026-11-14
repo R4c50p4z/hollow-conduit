@@ -92,8 +92,8 @@ describe('flow network', () => {
     simulate(s, 60);
     const end = s.tiles[idx(s, 4, 4)];
     expect(end.building!.pressure).toBeGreaterThan(0.99);
-    for (let i = 0; i < 4000 && !s.stats.ruptures; i++) tick(s, C.TICK);
-    expect(s.stats.ruptures).toBeGreaterThan(0);
+    for (let i = 0; i < 4000 && !s.stats.run.ruptures; i++) tick(s, C.TICK);
+    expect(s.stats.run.ruptures).toBeGreaterThan(0);
     expect(s.events.some((e) => e.kind === 'rupture')).toBe(true);
     expect(s.tiles.some((t) => t.rot > 0.3)).toBe(true);
   });
@@ -174,7 +174,7 @@ describe('hazards', () => {
     const l = s.leeches[0];
     expect([l.x, l.y]).toEqual([2, 2]);
     while (s.leeches.length) applyCommand(s, { t: 'strike', x: 2, y: 2 }), tick(s, C.TICK);
-    expect(s.stats.leechesKilled).toBeGreaterThan(0);
+    expect(s.stats.run.leechesKilled).toBeGreaterThan(0);
 
     const w = put(s, 3, 3, 'ward', 0);
     w.store[1] = 4;

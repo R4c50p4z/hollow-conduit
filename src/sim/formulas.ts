@@ -29,9 +29,9 @@ export function tierCost(kind: Kind, tier: number): Decimal {
 /** Heart exponent α. */
 export const heartAlpha = (m: Mutations) => 1 + 0.05 * m.hypertrophy;
 
-/** Global multiplier M from unspent mutagen. */
-export const globalMult = (unspentMutagen: Decimal) =>
-  unspentMutagen.mul(C.UNSPENT_MUTAGEN_BONUS).add(1);
+/** Global multiplier M = (1 + 0.1·unspent mutagen) · (1 + 0.02·achievements). */
+export const globalMult = (unspentMutagen: Decimal, achievements = 0) =>
+  unspentMutagen.mul(C.UNSPENT_MUTAGEN_BONUS).add(1).mul(1 + C.ACHIEVEMENT_BONUS * achievements);
 
 /**
  * Heart synthesis:  E/s = M · ( Π_r (1 + x_r)^(w_r · α) − 1 )
@@ -63,7 +63,7 @@ export const craftRate = (kind: 'digester' | 'reactor', tier: number, rot: numbe
 
 /** Buffer capacities grow with throughput so that "seconds of buffering" stays constant per tier. */
 export const storeCap = (kind: Kind, tier: number, m: Mutations) =>
-  C.KINDS[kind].storeCap * tierMul(tier) * (kind === 'conduit' || kind === 'router' ? Math.pow(1.5, m.vascular) : 1);
+  C.KINDS[kind].storeCap * tierMul(tier) * (kind === 'conduit' || kind === 'router' || kind === 'junction' ? Math.pow(1.5, m.vascular) : 1);
 export const outCap = (kind: Kind, tier: number) => C.KINDS[kind].outCap * tierMul(tier);
 
 /** Integrity loss per second from pressure (fill ∈ [0,1]) and rot. */

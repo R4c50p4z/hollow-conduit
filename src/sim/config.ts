@@ -47,6 +47,10 @@ export const KINDS: Record<Kind, KindSpec> = {
     name: 'Ganglion', cost: 8, costGrowth: 1.1, tierBase: 6, tierGrowth: 7, terrain: 'rock',
     storeCap: 6, outCap: 0, blurb: 'Splits flow to every side not feeding into it.',
   },
+  junction: {
+    name: 'Junction', cost: 12, costGrowth: 1.12, tierBase: 6, tierGrowth: 7, terrain: 'rock',
+    storeCap: 6, outCap: 0, blurb: 'Two flows cross at right angles without mixing.',
+  },
   digester: {
     name: 'Digester', cost: 60, costGrowth: 1.25, tierBase: 5, tierGrowth: 9, terrain: 'rock',
     storeCap: 8, outCap: 4, blurb: '2 ichor → 1 bile.',
@@ -69,7 +73,7 @@ export const KINDS: Record<Kind, KindSpec> = {
   },
 };
 
-export const BUILDABLE: Kind[] = ['conduit', 'router', 'tap', 'sporangium', 'digester', 'reactor', 'ward', 'cauterizer'];
+export const BUILDABLE: Kind[] = ['conduit', 'router', 'junction', 'tap', 'sporangium', 'digester', 'reactor', 'ward', 'cauterizer'];
 
 // --- Rates (tier multiplies by 2^tier) -------------------------------------------------
 export const TAP_RATE = 1.0;
@@ -143,6 +147,7 @@ export const META_EXPONENT = 0.35;
 export const DEPTH_HAZARD = 1.15; // hazard intensity × DEPTH_HAZARD^depth
 export const DEPTH_YIELD = 1.2; // mutagen yield × DEPTH_YIELD^depth
 export const UNSPENT_MUTAGEN_BONUS = 0.1; // global ×(1 + b·unspent)
+export const ACHIEVEMENT_BONUS = 0.02; // global ×(1 + b·achievements)
 
 export interface MutationSpec {
   name: string;

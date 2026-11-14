@@ -1,24 +1,30 @@
 import Decimal from 'break_eternity.js';
 import * as C from './config';
 import { rand, randInt } from './rng';
-import { emptyBuf, type Building, type Dir, type Kind, type Mutations, type SimState, type Tile } from './types';
+import { zeroStats } from './stats';
+import { emptyBuf, type Building, type Dir, type GameEvent, type Kind, type Mutations, type SimState, type Tile } from './types';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export const idx = (s: { w: number }, x: number, y: number) => y * s.w + x;
 export const inBounds = (s: { w: number; h: number }, x: number, y: number) => x >= 0 && y >= 0 && x < s.w && y < s.h;
 export const tileAt = (s: SimState, x: number, y: number): Tile | null => (inBounds(s, x, y) ? s.tiles[idx(s, x, y)] : null);
 
-export function newBuilding(kind: Kind, dir: Dir, invested: Decimal = new Decimal(0)): Building {
-  return {
+export function newBuilding(kind: Kind, dir: Dir, invested: Decimal = new Decimal(0), bornAt = 0): Building {
+  const b: Building = {
     kind, dir, tier: 0, integrity: 1, enabled: true,
     store: emptyBuf(), out: emptyBuf(), incoming: emptyBuf(),
-    progress: 0, flowEma: 0, rr: 0, invested, pressure: 0,
+    progress: 0, flowEma: 0, rr: 0, invested, pressure: 0, bornAt,
   };
+  if (kind === 'junction') {
+    b.lanes = [emptyBuf(), emptyBuf(), emptyBuf(), emptyBuf()];
+    b.lanesIn = [emptyBuf(), emptyBuf(), emptyBuf(), emptyBuf()];
+  }
+  return b;
 }
 
 const zeroBuilt = (): Record<Kind, number> => ({
-  tap: 0, sporangium: 0, conduit: 0, router: 0, digester: 0, reactor: 0, cauterizer: 0, ward: 0, heart: 1,
+  tap: 0, sporangium: 0, conduit: 0, router: 0, junction: 0, digester: 0, reactor: 0, cauterizer: 0, ward: 0, heart: 1,
 });
 
 export const zeroMutations = (): Mutations => ({ hypertrophy: 0, vascular: 0, fecundity: 0, chitin: 0, talons: 0, catalysis: 0 });
@@ -75,7 +81,8 @@ export function createState(seed: number): SimState {
     mutations: zeroMutations(),
     depth: 0,
     totalEssence: new Decimal(0),
-    stats: { ruptures: 0, leechesKilled: 0, peakRate: new Decimal(0) },
+    achievements: [],
+    stats: zeroStats(),
     events: [],
   };
   generateMap(s);
@@ -95,11 +102,10 @@ export function resetRun(s: SimState, newSeed: number) {
   s.rate = new Decimal(0);
   s.intake = emptyBuf();
   s.built = zeroBuilt();
-  s.stats = { ruptures: 0, leechesKilled: 0, peakRate: new Decimal(0) };
   generateMap(s);
 }
 
-export function pushEvent(s: SimState, e: Omit<SimState['events'][number], 't'>) {
+export function pushEvent(s: SimState, e: Omit<GameEvent, 't'>) {
   s.events.push({ t: s.time, ...e });
   if (s.events.length > 40) s.events.splice(0, s.events.length - 40);
 }

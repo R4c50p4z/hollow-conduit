@@ -120,8 +120,8 @@ export class SimHost {
       seconds: secs,
       essenceBefore: s.essence,
       essenceAfter: s.essence,
-      ruptures: s.stats.ruptures,
-      leechesKilled: s.stats.leechesKilled,
+      ruptures: s.stats.life.ruptures,
+      leechesKilled: s.stats.life.leechesKilled,
       waves: s.wave,
     };
     const steps = Math.floor(secs / OFFLINE_DT);
@@ -132,9 +132,10 @@ export class SimHost {
       await new Promise((r) => setTimeout(r, 0));
     }
     report.essenceAfter = s.essence;
-    report.ruptures = s.stats.ruptures - report.ruptures;
-    report.leechesKilled = s.stats.leechesKilled - report.leechesKilled;
+    report.ruptures = s.stats.life.ruptures - report.ruptures;
+    report.leechesKilled = s.stats.life.leechesKilled - report.leechesKilled;
     report.waves = s.wave - report.waves;
+    s.stats.offlineSeconds += secs;
     this.last = performance.now();
     this.acc = 0;
     this.busy = false;

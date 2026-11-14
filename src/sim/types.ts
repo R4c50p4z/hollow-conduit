@@ -23,11 +23,14 @@ export type Kind =
   | 'sporangium'
   | 'conduit'
   | 'router'
+  | 'junction'
   | 'digester'
   | 'reactor'
   | 'cauterizer'
   | 'ward'
   | 'heart';
+
+export const ALL_KINDS: Kind[] = ['tap', 'sporangium', 'conduit', 'router', 'junction', 'digester', 'reactor', 'cauterizer', 'ward', 'heart'];
 
 export type Buf = [number, number, number, number];
 export const emptyBuf = (): Buf => [0, 0, 0, 0];
@@ -45,16 +48,21 @@ export interface Building {
   out: Buf;
   /** Received this tick — merged into `store` at the end of the transfer phase (prevents multi-hop per tick). */
   incoming: Buf;
-  /** Crafting progress in crafts (fractional). */
+  /** Junctions only: one lane per exit direction (N,E,S,W), each a single-fluid buffer. */
+  lanes?: [Buf, Buf, Buf, Buf];
+  lanesIn?: [Buf, Buf, Buf, Buf];
+  /** Total crafts performed (processors). */
   progress: number;
   /** EMA of units pushed out per second — for UI and stagnation checks. */
   flowEma: number;
   /** Round-robin cursor for routers. */
   rr: number;
-  /** Total essence spent on this building (for refunds/repair pricing). Stored as a string-able Decimal. */
+  /** Total essence spent on this building (for refunds/repair pricing). */
   invested: Decimal;
   /** Last computed fill fraction 0..1 (pressure). */
   pressure: number;
+  /** Sim time when built — for age stats. */
+  bornAt?: number;
 }
 
 export interface Tile {
@@ -76,6 +84,8 @@ export interface Leech {
   latched: boolean;
   /** Seconds spent feeding. */
   fed: number;
+  /** Who dealt the last blow — for kill attribution. */
+  lastHit?: 'strike' | 'ward';
 }
 
 export interface Mutations {
@@ -88,18 +98,111 @@ export interface Mutations {
 }
 export type MutationId = keyof Mutations;
 
+export type EventKind = 'rupture' | 'wave' | 'leech_killed' | 'leech_sated' | 'metamorphosis' | 'achievement';
+export type EventParams = Record<string, string | number>;
+
+/** Events carry a code + params; the UI turns them into text in the player's language. */
 export interface GameEvent {
   t: number;
-  kind: 'rupture' | 'wave' | 'leech_killed' | 'building_lost' | 'metamorphosis' | 'info';
-  msg: string;
+  kind: EventKind;
+  params?: EventParams;
   x?: number;
   y?: number;
 }
 
-export interface RunStats {
+export type RuptureCause = 'pressure' | 'rot' | 'leech';
+
+/** Additive counters. Kept twice: once for the current cycle, once for the whole save. */
+export interface Counters {
+  time: number;
+  produced: Buf; // extracted or crafted
+  consumed: Buf; // eaten by the Heart
+  refinedIn: Buf; // fed into recipes
+  burned: Buf; // fuel burned by wards / cauterizers
+  drained: Buf; // stolen by leeches
+  spilled: Buf; // lost to ruptures, vents, razing
+  crafts: { digester: number; reactor: number };
+  essenceEarned: Decimal;
+  spentBuild: Decimal;
+  spentUpgrade: Decimal;
+  spentRepair: Decimal;
+  spentCleanse: Decimal;
+  refunded: Decimal;
+  heartLeeched: Decimal;
+  built: number;
+  builtByKind: Partial<Record<Kind, number>>;
+  razed: number;
+  upgrades: number;
+  repairs: number;
+  vents: number;
+  cleanses: number;
+  seals: number;
+  rotations: number;
   ruptures: number;
+  rupturesByKind: Partial<Record<Kind, number>>;
+  rupturesByCause: Record<RuptureCause, number>;
+  waves: number;
+  leechesSpawned: number;
   leechesKilled: number;
+  killsByStrike: number;
+  killsByWard: number;
+  leechesSated: number;
+  strikes: number;
+  strikeDamage: number;
+  wardDamage: number;
+  rotCleansed: number; // rot removed by hand
+  rotScoured: number; // rot removed by cauterizers
+  rotFlushed: number; // rot washed out by flow
+  entropySeeds: number;
+  overpressureSeconds: number; // structure-seconds above the safe threshold
+  rotTileSeconds: number; // tile-seconds with rot > 0.5
+}
+
+/** Time series, sampled every `every` seconds of sim time. log10 values for anything Decimal. */
+export interface History {
+  every: number;
+  next: number;
+  t: number[];
+  rateLog: number[];
+  essenceLog: number[];
+  intake: [number[], number[], number[], number[]];
+  rot: number[]; // average rot over all tiles
+  pressure: number[]; // average pressure over vessels
+  integrity: number[]; // average integrity over structures
+  leeches: number[];
+  structures: number[];
+}
+
+export interface RunSummary {
+  depth: number;
+  duration: number;
+  peakRateLog: number;
+  essenceLog: number;
+  mutagen: number;
+  ruptures: number;
+  kills: number;
+  waves: number;
+  endedAt: number; // lifetime seconds
+}
+
+export interface Stats {
+  run: Counters;
+  life: Counters;
+  // Run peaks
   peakRate: Decimal;
+  peakEssence: Decimal;
+  peakIntake: Buf;
+  peakLeeches: number;
+  // Lifetime records
+  bestRate: Decimal;
+  metamorphoses: number;
+  mutagenEarned: Decimal;
+  fastestMeta: number | null;
+  longestRun: number;
+  offlineSeconds: number;
+  sessions: number;
+  history: History;
+  runs: RunSummary[];
 }
 
 export interface SimState {
@@ -132,8 +235,9 @@ export interface SimState {
   mutations: Mutations;
   depth: number;
   totalEssence: Decimal;
+  achievements: string[];
 
-  stats: RunStats;
+  stats: Stats;
   events: GameEvent[];
 }
 
@@ -150,4 +254,20 @@ export type Command =
   | { t: 'mutate'; id: MutationId }
   | { t: 'metamorphose' };
 
-export type CommandResult = { ok: true } | { ok: false; reason: string };
+export type ReasonCode =
+  | 'outOfBounds'
+  | 'occupied'
+  | 'burrow'
+  | 'needsTerrain'
+  | 'tooRotten'
+  | 'noEssence'
+  | 'oneHeart'
+  | 'nothingThere'
+  | 'healthy'
+  | 'noRot'
+  | 'noLeech'
+  | 'maxed'
+  | 'noMutagen'
+  | 'metaThreshold';
+
+export type CommandResult = { ok: true } | { ok: false; reason: ReasonCode; params?: EventParams };

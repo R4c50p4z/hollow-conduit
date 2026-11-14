@@ -1,8 +1,10 @@
 import Decimal from 'break_eternity.js';
 import * as C from './config';
 import * as F from './formulas';
+import { checkAchievements } from './achievements';
 import { rand, randInt } from './rng';
-import { DX, DY, R, opposite, type Building, type Dir, type Leech, type SimState } from './types';
+import { count, countE, countKind, countRes, tickStats } from './stats';
+import { DX, DY, R, opposite, type Building, type Buf, type Dir, type Leech, type RuptureCause, type SimState } from './types';
 import { idx, inBounds, pushEvent, tileAt } from './world';
 
 /**
@@ -17,8 +19,10 @@ import { idx, inBounds, pushEvent, tileAt } from './world';
  *   4. Pressure & integrity      (fill fraction → damage → ruptures)
  *   5. Rot field                 (logistic growth + diffusion + stagnation + entropy seeding)
  *   6. Parasites                 (waves, movement, latching, wards)
+ *   7. Statistics                (peaks, time series)
  */
 export function tick(s: SimState, dt: number) {
+  const prevSecond = Math.floor(s.time);
   s.time += dt;
   const pushed = produce(s, dt);
   transfer(s, dt, pushed);
@@ -26,6 +30,8 @@ export function tick(s: SimState, dt: number) {
   pressure(s, dt, pushed);
   rotField(s, dt);
   parasites(s, dt);
+  tickStats(s, dt);
+  if (Math.floor(s.time) !== prevSecond) checkAchievements(s);
 }
 
 const sum = (b: number[]) => b[0] + b[1] + b[2] + b[3];
@@ -44,7 +50,9 @@ function produce(s: SimState, dt: number): Float64Array {
         const r = b.kind === 'tap' ? R.ichor : R.spore;
         const amt = F.extractionRate(b.kind, b.tier, t.richness, t.rot, m) * dt;
         const space = F.outCap(b.kind, b.tier) - sum(b.out);
-        b.out[r] += Math.max(0, Math.min(amt, space));
+        const got = Math.max(0, Math.min(amt, space));
+        b.out[r] += got;
+        countRes(s, 'produced', r, got);
         break;
       }
       case 'digester':
@@ -60,8 +68,12 @@ function produce(s: SimState, dt: number): Float64Array {
         for (let r = 0; r < 4; r++) {
           b.store[r] -= rec.in[r] * crafts;
           b.out[r] += rec.out[r] * crafts;
+          if (rec.in[r]) countRes(s, 'refinedIn', r, rec.in[r] * crafts);
+          if (rec.out[r]) countRes(s, 'produced', r, rec.out[r] * crafts);
         }
         b.progress += crafts;
+        s.stats.run.crafts[b.kind] += crafts;
+        s.stats.life.crafts[b.kind] += crafts;
         break;
       }
       case 'cauterizer': {
@@ -71,17 +83,29 @@ function produce(s: SimState, dt: number): Float64Array {
         const frac = Math.min(1, b.store[R.bile] / need);
         if (frac <= 0) break;
         b.store[R.bile] -= need * frac;
+        countRes(s, 'burned', R.bile, need * frac);
         const clean = C.CAUTERIZER_CLEANSE * F.tierMul(b.tier) * frac * dt;
-        forRadius(s, x, y, C.CAUTERIZER_RADIUS, (tt) => { tt.rot = Math.max(0, tt.rot - clean); });
+        let removed = 0;
+        forRadius(s, x, y, C.CAUTERIZER_RADIUS, (tt) => {
+          const d = Math.min(tt.rot, clean);
+          tt.rot -= d;
+          removed += d;
+        });
+        count(s, 'rotScoured', removed);
         break;
       }
-      // ward handled in parasites(); conduit/router/heart have no production
+      // ward handled in parasites(); conduit/router/junction/heart have no production
     }
   }
   return new Float64Array(s.tiles.length);
 }
 
 // --- 2. Transfer -------------------------------------------------------------------------
+
+const singleFluidSpace = (store: Buf, incoming: Buf, r: number, cap: number) => {
+  for (let k = 0; k < 4; k++) if (k !== r && store[k] + incoming[k] > 1e-9) return 0;
+  return cap - sum(store) - sum(incoming);
+};
 
 /** How much of resource r `target` will take from a source located in direction `fromDir` (relative to the target). */
 function accept(s: SimState, tx: number, ty: number, r: number, amount: number, fromDir: Dir): number {
@@ -94,9 +118,15 @@ function accept(s: SimState, tx: number, ty: number, r: number, amount: number, 
     case 'conduit': {
       if (!b.enabled) return 0; // sealed valve
       if (b.dir === fromDir) return 0; // never accept from its own output face
-      for (let k = 0; k < 4; k++) if (k !== r && b.store[k] + b.incoming[k] > 1e-9) return 0; // one fluid per vessel
-      space = F.storeCap('conduit', b.tier, m) - sum(b.store) - sum(b.incoming);
+      space = singleFluidSpace(b.store, b.incoming, r, F.storeCap('conduit', b.tier, m));
       break;
+    }
+    case 'junction': {
+      if (!b.enabled || !b.lanes || !b.lanesIn) return 0;
+      const lane = opposite(fromDir); // keeps travelling the way it was going
+      const got = Math.max(0, Math.min(amount, singleFluidSpace(b.lanes[lane], b.lanesIn[lane], r, F.storeCap('junction', b.tier, m))));
+      b.lanesIn[lane][r] += got;
+      return got;
     }
     case 'router':
       if (!b.enabled) return 0;
@@ -129,8 +159,21 @@ function accept(s: SimState, tx: number, ty: number, r: number, amount: number, 
 /** Does the building at (nx,ny) push into (x,y)? Routers never push back into their feeders. */
 function feedsInto(s: SimState, nx: number, ny: number, x: number, y: number): boolean {
   const b = tileAt(s, nx, ny)?.building;
-  if (!b || b.kind === 'router' || b.kind === 'heart') return false;
+  if (!b || b.kind === 'router' || b.kind === 'heart' || b.kind === 'junction') return false;
   return nx + DX[b.dir] === x && ny + DY[b.dir] === y;
+}
+
+/** Push from a single-resource-agnostic buffer toward (tx,ty). Returns amount moved. */
+function pushBuf(s: SimState, buf: Buf, budget: number, tx: number, ty: number, fromDir: Dir): number {
+  let moved = 0;
+  for (let r = 0; r < 4 && budget > 0; r++) {
+    if (buf[r] <= 0) continue;
+    const got = accept(s, tx, ty, r, Math.min(buf[r], budget), fromDir);
+    buf[r] -= got;
+    budget -= got;
+    moved += got;
+  }
+  return moved;
 }
 
 function transfer(s: SimState, dt: number, pushed: Float64Array) {
@@ -147,15 +190,14 @@ function transfer(s: SimState, dt: number, pushed: Float64Array) {
     switch (b.kind) {
       case 'conduit': {
         if (!b.enabled) break;
-        let budget = F.conduitThroughput('conduit', b.tier, t.rot, m) * dt;
-        const tx = x + DX[b.dir], ty = y + DY[b.dir];
-        for (let r = 0; r < 4 && budget > 0; r++) {
-          if (b.store[r] <= 0) continue;
-          const got = accept(s, tx, ty, r, Math.min(b.store[r], budget), opposite(b.dir));
-          b.store[r] -= got;
-          budget -= got;
-          pushed[i] += got;
-        }
+        const budget = F.conduitThroughput('conduit', b.tier, t.rot, m) * dt;
+        pushed[i] += pushBuf(s, b.store, budget, x + DX[b.dir], y + DY[b.dir], opposite(b.dir));
+        break;
+      }
+      case 'junction': {
+        if (!b.enabled || !b.lanes) break;
+        const budget = F.conduitThroughput('conduit', b.tier, t.rot, m) * dt;
+        for (let d = 0; d < 4; d++) pushed[i] += pushBuf(s, b.lanes[d], budget, x + DX[d], y + DY[d], opposite(d as Dir));
         break;
       }
       case 'router': {
@@ -173,15 +215,9 @@ function transfer(s: SimState, dt: number, pushed: Float64Array) {
         for (let pass = 0; pass < 2 && budget > 1e-12; pass++) {
           const share = budget / outs.length;
           for (const d of outs) {
-            let quota = share;
-            for (let r = 0; r < 4 && quota > 0; r++) {
-              if (b.store[r] <= 0) continue;
-              const got = accept(s, x + DX[d], y + DY[d], r, Math.min(b.store[r], quota), opposite(d));
-              b.store[r] -= got;
-              quota -= got;
-              budget -= got;
-              pushed[i] += got;
-            }
+            const got = pushBuf(s, b.store, share, x + DX[d], y + DY[d], opposite(d));
+            budget -= got;
+            pushed[i] += got;
           }
         }
         break;
@@ -190,15 +226,8 @@ function transfer(s: SimState, dt: number, pushed: Float64Array) {
       case 'sporangium':
       case 'digester':
       case 'reactor': {
-        let budget = C.PUSH_RATE * F.tierMul(b.tier) * dt;
-        const tx = x + DX[b.dir], ty = y + DY[b.dir];
-        for (let r = 0; r < 4 && budget > 0; r++) {
-          if (b.out[r] <= 0) continue;
-          const got = accept(s, tx, ty, r, Math.min(b.out[r], budget), opposite(b.dir));
-          b.out[r] -= got;
-          budget -= got;
-          pushed[i] += got;
-        }
+        const budget = C.PUSH_RATE * F.tierMul(b.tier) * dt;
+        pushed[i] += pushBuf(s, b.out, budget, x + DX[b.dir], y + DY[b.dir], opposite(b.dir));
         break;
       }
     }
@@ -210,6 +239,12 @@ function transfer(s: SimState, dt: number, pushed: Float64Array) {
       b.store[r] += b.incoming[r];
       b.incoming[r] = 0;
     }
+    if (b.lanes && b.lanesIn)
+      for (let d = 0; d < 4; d++)
+        for (let r = 0; r < 4; r++) {
+          b.lanes[d][r] += b.lanesIn[d][r];
+          b.lanesIn[d][r] = 0;
+        }
   }
 }
 
@@ -223,16 +258,16 @@ function synthesise(s: SimState, dt: number) {
   for (let r = 0; r < 4; r++) {
     const c = Math.min(heart.store[r], cap);
     heart.store[r] -= c;
+    countRes(s, 'consumed', r, c);
     s.intake[r] += (c / dt - s.intake[r]) * k;
     if (s.intake[r] < 1e-6) s.intake[r] = 0;
   }
-  const unspent = s.mutagen;
-  s.rate = F.heartRate(s.intake, F.heartAlpha(s.mutations), F.globalMult(unspent));
+  s.rate = F.heartRate(s.intake, F.heartAlpha(s.mutations), F.globalMult(s.mutagen, s.achievements.length));
   const gain = s.rate.add(C.HEART_PULSE).mul(dt);
   s.essence = s.essence.add(gain);
   s.runEssence = s.runEssence.add(gain);
   s.totalEssence = s.totalEssence.add(gain);
-  if (s.rate.gt(s.stats.peakRate)) s.stats.peakRate = s.rate;
+  countE(s, 'essenceEarned', gain);
 }
 
 // --- 4. Pressure & integrity ---------------------------------------------------------------
@@ -244,6 +279,11 @@ export function fillOf(s: SimState, b: Building): number {
     case 'conduit':
     case 'router':
       return sum(b.store) / F.storeCap(b.kind, b.tier, m);
+    case 'junction': {
+      if (!b.lanes) return 0;
+      const cap = F.storeCap('junction', b.tier, m);
+      return Math.max(...b.lanes.map((l) => sum(l) / cap));
+    }
     case 'tap':
     case 'sporangium':
       return b.enabled ? sum(b.out) / F.outCap(b.kind, b.tier) : 0;
@@ -261,6 +301,7 @@ function pressure(s: SimState, dt: number, pushed: Float64Array) {
   const k = 1 - Math.exp(-dt / 1.5);
   for (let i = 0; i < s.tiles.length; i++) {
     const t = s.tiles[i];
+    if (t.rot > 0.5) count(s, 'rotTileSeconds', dt);
     const b = t.building;
     if (!b || b.kind === 'heart') continue;
     b.flowEma += (pushed[i] / dt - b.flowEma) * k;
@@ -269,16 +310,29 @@ function pressure(s: SimState, dt: number, pushed: Float64Array) {
     const loss = F.integrityLoss(fill, t.rot, m) * hz;
     if (loss > 0) b.integrity -= loss * dt;
     else if (fill < 0.5) b.integrity = Math.min(1, b.integrity + C.INTEGRITY_REGEN * dt);
-    if (fill > C.PRESSURE_SAFE) t.rot = Math.min(1, t.rot + C.ROT_STAGNATION * dt);
-    if (b.integrity <= 0) rupture(s, i);
+    if (fill > C.PRESSURE_SAFE) {
+      t.rot = Math.min(1, t.rot + C.ROT_STAGNATION * dt);
+      count(s, 'overpressureSeconds', dt);
+    }
+    if (b.integrity <= 0) rupture(s, i, fill > C.PRESSURE_SAFE ? 'pressure' : 'rot');
   }
 }
 
-export function rupture(s: SimState, i: number) {
+/** Everything a building holds, in one buffer. */
+export function contentsOf(b: Building): Buf {
+  const c: Buf = [0, 0, 0, 0];
+  for (let r = 0; r < 4; r++) c[r] = b.store[r] + b.out[r];
+  if (b.lanes) for (const l of b.lanes) for (let r = 0; r < 4; r++) c[r] += l[r];
+  return c;
+}
+
+export function rupture(s: SimState, i: number, cause: RuptureCause) {
   const t = s.tiles[i];
   const b = t.building;
   if (!b || b.kind === 'heart') return;
   const x = i % s.w, y = (i / s.w) | 0;
+  const lost = contentsOf(b);
+  for (let r = 0; r < 4; r++) countRes(s, 'spilled', r, lost[r]);
   t.building = null;
   s.built[b.kind] = Math.max(0, s.built[b.kind] - 1);
   t.rot = Math.min(1, t.rot + C.RUPTURE_ROT);
@@ -286,8 +340,11 @@ export function rupture(s: SimState, i: number) {
     const n = tileAt(s, x + DX[d], y + DY[d]);
     if (n) n.rot = Math.min(1, n.rot + C.RUPTURE_ROT_SPLASH);
   }
-  s.stats.ruptures++;
-  pushEvent(s, { kind: 'rupture', msg: `${C.KINDS[b.kind].name} ruptured`, x, y });
+  count(s, 'ruptures');
+  countKind(s, 'rupturesByKind', b.kind);
+  s.stats.run.rupturesByCause[cause]++;
+  s.stats.life.rupturesByCause[cause]++;
+  pushEvent(s, { kind: 'rupture', params: { kind: b.kind, cause }, x, y });
 }
 
 // --- 5. Rot ----------------------------------------------------------------------------------
@@ -295,6 +352,7 @@ export function rupture(s: SimState, i: number) {
 function rotField(s: SimState, dt: number) {
   const { w, h } = s;
   const next = new Float64Array(s.tiles.length);
+  let flushed = 0;
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const i = y * w + x;
@@ -308,8 +366,10 @@ function rotField(s: SimState, dt: number) {
       const onStructure = !!b;
       let local: number;
       if (!b) local = -C.ROT_BARE_DECAY;
-      else if (isFlowing(s, b)) local = -C.ROT_FLUSH; // moving fluid scours its vessel
-      else if (b.kind === 'ward' || b.kind === 'cauterizer') local = 0; // valved sinks: inert
+      else if (isFlowing(s, b)) {
+        local = -C.ROT_FLUSH; // moving fluid scours its vessel
+        flushed += Math.min(r, C.ROT_FLUSH * dt);
+      } else if (b.kind === 'ward' || b.kind === 'cauterizer') local = 0; // valved sinks: inert
       else local = C.ROT_GROWTH * r * (1 - r); // stagnation breeds rot
       let v = r + (local + C.ROT_DIFFUSION * lap) * dt;
       // Only bare rock evaporates small amounts; on structures even traces are seeds.
@@ -318,6 +378,7 @@ function rotField(s: SimState, dt: number) {
     }
   }
   for (let i = 0; i < next.length; i++) s.tiles[i].rot = next[i];
+  if (flushed > 0) count(s, 'rotFlushed', flushed);
 
   // Entropy: random corruption, more frequent the more powerful the network.
   if (rand(s) < F.entropyChance(s.rate, s.depth) * dt) {
@@ -325,6 +386,7 @@ function rotField(s: SimState, dt: number) {
     s.tiles.forEach((t, i) => t.building && t.building.kind !== 'heart' && cands.push(i));
     const i = cands.length ? cands[randInt(s, cands.length)] : randInt(s, s.tiles.length);
     s.tiles[i].rot = Math.min(1, s.tiles[i].rot + C.ENTROPY_SEED_ROT);
+    count(s, 'entropySeeds');
   }
 }
 
@@ -347,14 +409,18 @@ function parasites(s: SimState, dt: number) {
     const x = i % s.w, y = (i / s.w) | 0;
     let target: Leech | null = null;
     for (const l of s.leeches) {
-      if (Math.max(Math.abs(l.x - x), Math.abs(l.y - y)) <= C.WARD_RADIUS && (!target || l.hp < target.hp)) target = l;
+      if (l.hp > 0 && Math.max(Math.abs(l.x - x), Math.abs(l.y - y)) <= C.WARD_RADIUS && (!target || l.hp < target.hp)) target = l;
     }
     if (!target) continue;
     const need = C.WARD_BURN * Math.pow(1.5, b.tier) * dt;
     const frac = Math.min(1, b.store[R.spore] / need);
     if (frac <= 0) continue;
     b.store[R.spore] -= need * frac;
-    target.hp -= C.WARD_DPS * F.tierMul(b.tier) * frac * dt;
+    countRes(s, 'burned', R.spore, need * frac);
+    const dmg = Math.min(target.hp, C.WARD_DPS * F.tierMul(b.tier) * frac * dt);
+    target.hp -= dmg;
+    target.lastHit = 'ward';
+    count(s, 'wardDamage', dmg);
   }
 
   for (const l of s.leeches) {
@@ -365,14 +431,21 @@ function parasites(s: SimState, dt: number) {
       l.latched = true;
       l.fed += dt;
       if (b.kind === 'heart') {
-        s.essence = s.essence.mul(1 - C.LEECH_HEART_DRAIN * dt);
+        const lost = s.essence.mul(C.LEECH_HEART_DRAIN * dt);
+        s.essence = s.essence.sub(lost);
+        countE(s, 'heartLeeched', lost);
       } else {
         const keep = 1 - C.LEECH_DRAIN * dt;
-        for (let r = 0; r < 4; r++) { b.store[r] *= keep; b.out[r] *= keep; }
+        const bufs = [b.store, b.out, ...(b.lanes ?? [])];
+        for (const buf of bufs)
+          for (let r = 0; r < 4; r++) {
+            countRes(s, 'drained', r, buf[r] * (1 - keep));
+            buf[r] *= keep;
+          }
         b.integrity -= C.LEECH_BITE * dt;
         t.rot = Math.min(1, t.rot + C.LEECH_ROT * dt);
         if (b.integrity <= 0) {
-          rupture(s, idx(s, l.x, l.y));
+          rupture(s, idx(s, l.x, l.y), 'leech');
           l.latched = false;
         }
       }
@@ -389,14 +462,20 @@ function parasites(s: SimState, dt: number) {
 
   let slain = 0;
   s.leeches = s.leeches.filter((l) => {
-    if (l.hp <= 0) { slain++; s.stats.leechesKilled++; return false; }
+    if (l.hp <= 0) {
+      slain++;
+      count(s, 'leechesKilled');
+      count(s, l.lastHit === 'ward' ? 'killsByWard' : 'killsByStrike');
+      return false;
+    }
     if (l.fed >= C.LEECH_SATIATION) {
-      pushEvent(s, { kind: 'info', msg: 'A gorged leech burrows away', x: l.x, y: l.y });
+      count(s, 'leechesSated');
+      pushEvent(s, { kind: 'leech_sated', x: l.x, y: l.y });
       return false;
     }
     return true;
   });
-  if (slain) pushEvent(s, { kind: 'leech_killed', msg: `${slain} leech${slain > 1 ? 'es' : ''} slain` });
+  if (slain) pushEvent(s, { kind: 'leech_killed', params: { n: slain } });
 }
 
 /** Leeches hunt the nearest structure; the Heart only when nothing else stands. */
@@ -416,13 +495,17 @@ function nearestBuilding(s: SimState, x: number, y: number): [number, number] {
 export function spawnWave(s: SimState) {
   const burrows: number[] = [];
   s.tiles.forEach((t, i) => t.terrain === 'burrow' && burrows.push(i));
-  const count = F.waveCount(s.wave, s.rate);
+  const n = F.waveCount(s.wave, s.rate);
   const hp = F.leechHp(s.wave, s.depth, s.rate);
-  for (let k = 0; k < count && burrows.length; k++) {
+  let spawned = 0;
+  for (let k = 0; k < n && burrows.length; k++) {
     const i = burrows[randInt(s, burrows.length)];
     s.leeches.push({ id: s.nextLeechId++, x: i % s.w, y: (i / s.w) | 0, hp, maxHp: hp, moveCd: C.LEECH_MOVE_CD * (1 + k * 0.3), latched: false, fed: 0 });
+    spawned++;
   }
-  pushEvent(s, { kind: 'wave', msg: `Wave ${s.wave + 1}: ${count} leech${count > 1 ? 'es' : ''} stir` });
+  count(s, 'waves');
+  count(s, 'leechesSpawned', spawned);
+  pushEvent(s, { kind: 'wave', params: { wave: s.wave + 1, n: spawned } });
   s.wave++;
   s.waveTimer = F.waveInterval(s.wave);
 }
@@ -443,14 +526,14 @@ function anyRotNear(s: SimState, x: number, y: number, rad: number) {
 /** Run many ticks (offline catch-up / probes). Returns a summary diff. */
 export function simulate(s: SimState, seconds: number, dt = C.TICK) {
   const e0 = s.essence;
-  const r0 = s.stats.ruptures;
-  const k0 = s.stats.leechesKilled;
+  const r0 = s.stats.life.ruptures;
+  const k0 = s.stats.life.leechesKilled;
   const steps = Math.floor(seconds / dt);
   for (let i = 0; i < steps; i++) tick(s, dt);
   return {
     seconds: steps * dt,
     essenceGained: s.essence.sub(e0).max(new Decimal(0)),
-    ruptures: s.stats.ruptures - r0,
-    leechesKilled: s.stats.leechesKilled - k0,
+    ruptures: s.stats.life.ruptures - r0,
+    leechesKilled: s.stats.life.leechesKilled - k0,
   };
 }

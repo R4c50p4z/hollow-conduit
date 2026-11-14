@@ -1,37 +1,38 @@
 import { host } from '../game/host';
 import { useUI } from '../game/store';
+import { LANGS, useT } from '../i18n';
+import { mutBlurb, mutName, reasonText } from '../i18n/game';
 import { Formulas as F, type MutationId } from '../sim';
 import { META_THRESHOLD, MUTATIONS, UNSPENT_MUTAGEN_BONUS } from '../sim/config';
-import { fmt, fmtTime } from './format';
+import { fmt, fmtTime, int } from './format';
 
 export function MutationsPanel() {
   useUI((u) => u.frame);
+  const t = useT();
   const { set, say } = useUI();
   const s = host.state;
   const gain = F.mutagenYield(s.runEssence, s.depth);
   return (
     <div className="modal" onClick={() => set({ panel: 'none' })}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <h2>Metamorphosis</h2>
-        <p className="sub">
-          Shed this cavern. Everything physical is lost; the Heart descends one depth (hazards ×1.15, yield ×1.2) and
-          mutates. Unspent mutagen strengthens the Heart by +{UNSPENT_MUTAGEN_BONUS * 100}% each.
-        </p>
+        <h2>{t('meta.title')}</h2>
+        <p className="sub">{t('meta.desc', { bonus: UNSPENT_MUTAGEN_BONUS * 100 })}</p>
         <div className="meta-box">
           <div>
             <div className="big">{fmt(s.mutagen, 0)}</div>
-            <div className="sub">mutagen · depth {s.depth}</div>
+            <div className="sub">{t('meta.depth', { depth: s.depth })}</div>
           </div>
           <button
             className={`act big-act ${gain.gt(0) ? 'glow' : 'poor'}`}
             onClick={() => {
-              if (!confirm(`Metamorphose for ${fmt(gain, 0)} mutagen? The cavern will be lost.`)) return;
+              if (gain.lte(0)) return;
+              if (!confirm(t('meta.confirm', { gain: fmt(gain, 0) }))) return;
               const r = host.dispatch({ t: 'metamorphose' });
-              if (!r.ok) say(r.reason);
+              if (!r.ok) say(reasonText(r));
               else set({ panel: 'none', selected: null, tool: null });
             }}
           >
-            {gain.gt(0) ? `Metamorphose +${fmt(gain, 0)}` : `Needs ${fmt(META_THRESHOLD)} this cycle (${fmt(s.runEssence)})`}
+            {gain.gt(0) ? t('meta.go', { gain: fmt(gain, 0) }) : t('meta.need', { need: fmt(META_THRESHOLD), have: fmt(s.runEssence) })}
           </button>
         </div>
         <div className="mutations">
@@ -46,20 +47,20 @@ export function MutationsPanel() {
                 className={`mut ${!maxed && s.mutagen.gte(cost) ? '' : 'poor'}`}
                 onClick={() => {
                   const r = host.dispatch({ t: 'mutate', id });
-                  if (!r.ok) say(r.reason);
+                  if (!r.ok) say(reasonText(r));
                 }}
               >
                 <b>
-                  {m.name} <small>{lvl}/{m.max}</small>
+                  {mutName(id)} <small>{lvl}/{m.max}</small>
                 </b>
-                <span>{m.blurb}</span>
+                <span>{mutBlurb(id)}</span>
                 <small className="cost">{maxed ? '—' : `☣ ${fmt(cost, 0)}`}</small>
               </button>
             );
           })}
         </div>
         <p className="sub">
-          This cycle: {fmtTime(s.time)} · peak {fmt(s.stats.peakRate)}/s · {s.stats.ruptures} ruptures · {s.stats.leechesKilled} leeches slain
+          {t('meta.cycle', { time: fmtTime(s.time), peak: fmt(s.stats.peakRate), r: int(s.stats.run.ruptures), k: int(s.stats.run.leechesKilled) })}
         </p>
       </div>
     </div>
@@ -67,34 +68,80 @@ export function MutationsPanel() {
 }
 
 export function HelpPanel() {
+  const t = useT();
   const set = useUI((u) => u.set);
   return (
     <div className="modal" onClick={() => set({ panel: 'none' })}>
       <div className="sheet help" onClick={(e) => e.stopPropagation()}>
-        <h2>The Hollow</h2>
+        <h2>{t('help.title')}</h2>
         <p>
-          The <b>Heart</b> synthesises essence from what you feed it:
+          {t('help.heart')}
           <br />
-          <code>E/s = M · (Π (1 + intake)^(weight·α) − 1)</code>
+          <code>E/s = M · (Π (1 + x)^(w·α) − 1)</code>
           <br />
-          Each resource is a <i>multiplier on every other</i>. One fat line of ichor is weak; ichor <i>and</i> bile <i>and</i> vitriol is
-          exponential.
+          {t('help.product')}
         </p>
         <ul>
-          <li><b>Tap</b> veins for ichor; fruit <b>spores</b> from spore beds.</li>
-          <li><b>Conduits</b> carry one fluid at a time and have throughput limits. Drag to lay them.</li>
-          <li><b>Digester</b>: 2 ichor → 1 bile. <b>Catalytic Womb</b>: 1 bile + 2 spore → 1 vitriol.</li>
-          <li><b>Ganglion</b> splits a flow to every side not feeding it.</li>
+          <li>{t('help.l1')}</li>
+          <li>{t('help.l2')}</li>
+          <li>{t('help.l3')}</li>
+          <li>{t('help.l4')}</li>
         </ul>
-        <h3>What kills you</h3>
+        <h3>{t('help.dangers')}</h3>
         <ul>
-          <li><b>Pressure</b> — anything backed up above 85% cracks and ruptures. Ruptures spill rot.</li>
-          <li><b>Rot</b> breeds on stagnant or pressured structures and spreads along your network. Flowing structures flush it; bare rock is a firebreak. Cauterizers burn bile to scour it.</li>
-          <li><b>Leeches</b> crawl from burrows, drain contents and gnaw integrity. Tap them to strike; Thorn Wards eat spores to impale them. Their strength follows your output.</li>
+          <li>{t('help.d1')}</li>
+          <li>{t('help.d2')}</li>
+          <li>{t('help.d3')}</li>
         </ul>
-        <p className="sub">Seal a structure to stop it (valves, emergency shutdowns). Vent dumps contents — at the cost of rot.</p>
-        <button className="act" onClick={() => { if (confirm('Erase everything and start over?')) { host.hardReset(); set({ panel: 'none' }); } }}>
-          Erase save
+        <p className="sub">{t('help.foot')}</p>
+        <LangPicker />
+      </div>
+    </div>
+  );
+}
+
+function LangPicker() {
+  const { lang, setLang } = useUI();
+  return (
+    <div className="seg">
+      {LANGS.map((l) => (
+        <button key={l.id} className={`act ${lang === l.id ? 'on' : ''}`} onClick={() => setLang(l.id)}>
+          {l.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function SettingsPanel() {
+  const t = useT();
+  const { set, notation, setNotation } = useUI();
+  return (
+    <div className="modal" onClick={() => set({ panel: 'none' })}>
+      <div className="sheet" onClick={(e) => e.stopPropagation()}>
+        <h2>{t('settings.title')}</h2>
+        <h3>{t('settings.language')}</h3>
+        <LangPicker />
+        <h3>{t('settings.notation')}</h3>
+        <div className="seg">
+          <button className={`act ${notation === 'suffix' ? 'on' : ''}`} onClick={() => setNotation('suffix')}>
+            {t('settings.suffix')}
+          </button>
+          <button className={`act ${notation === 'sci' ? 'on' : ''}`} onClick={() => setNotation('sci')}>
+            {t('settings.sci')}
+          </button>
+        </div>
+        <h3>&nbsp;</h3>
+        <button
+          className="act danger"
+          onClick={() => {
+            if (confirm(t('help.eraseConfirm'))) {
+              host.hardReset();
+              set({ panel: 'none', selected: null, tool: null });
+            }
+          }}
+        >
+          {t('help.erase')}
         </button>
       </div>
     </div>
@@ -102,20 +149,23 @@ export function HelpPanel() {
 }
 
 export function OfflineModal() {
+  const t = useT();
   const { offline, set } = useUI();
   if (!offline) return null;
   const gained = offline.essenceAfter.sub(offline.essenceBefore);
   return (
     <div className="modal" onClick={() => set({ offline: null })}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <h2>While you slept</h2>
-        <p className="sub">The cavern did not wait. {fmtTime(offline.seconds)} passed below.</p>
+        <h2>{t('off.title')}</h2>
+        <p className="sub">{t('off.desc', { time: fmtTime(offline.seconds) })}</p>
         <ul>
-          <li>Essence {gained.gte(0) ? `+${fmt(gained)}` : `−${fmt(gained.neg())}`}</li>
-          <li>{offline.waves} wave{offline.waves === 1 ? '' : 's'} · {offline.leechesKilled} leeches slain</li>
-          <li className={offline.ruptures ? 'bad' : ''}>{offline.ruptures} rupture{offline.ruptures === 1 ? '' : 's'}</li>
+          <li>{t('off.essence', { v: gained.gte(0) ? `+${fmt(gained)}` : `−${fmt(gained.neg())}` })}</li>
+          <li>{t('off.waves', { n: offline.waves, k: offline.leechesKilled })}</li>
+          <li className={offline.ruptures ? 'bad' : ''}>{t('off.ruptures', { n: offline.ruptures })}</li>
         </ul>
-        <button className="act" onClick={() => set({ offline: null })}>Descend</button>
+        <button className="act" onClick={() => set({ offline: null })}>
+          {t('off.ok')}
+        </button>
       </div>
     </div>
   );

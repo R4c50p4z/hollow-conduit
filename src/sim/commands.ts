@@ -164,7 +164,7 @@ export function applyCommand(s: SimState, cmd: Command): CommandResult {
       if (gain.lte(0)) return fail('metaThreshold', { need: C.META_THRESHOLD });
       closeRun(s, gain);
       s.mutagen = s.mutagen.add(gain);
-      s.depth++;
+      if (cmd.descend !== false) s.depth++;
       const seed = (s.seed * 1664525 + 1013904223) >>> 0;
       resetRun(s, seed);
       pushEvent(s, { kind: 'metamorphosis', params: { depth: s.depth, gain: gain.toString() } });

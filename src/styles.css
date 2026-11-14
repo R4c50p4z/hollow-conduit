@@ -176,3 +176,8 @@ th:first-child, td:first-child { text-align: left; }
 .tools { grid-template-columns: repeat(5, 1fr); }
 .tool { padding: 6px 5px; }
 .tool-name { font-size: 11px; }
+.export { display: flex; flex-direction: column; gap: 8px; }
+.export .act { min-height: 48px; }
+.meta-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.meta-choice .act { padding: 10px 8px; }
+.meta-choice small { margin-top: 3px; }

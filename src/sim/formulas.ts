@@ -23,15 +23,22 @@ export function buildCost(kind: Kind, owned: number): Decimal {
 
 export function tierCost(kind: Kind, tier: number): Decimal {
   const s = C.KINDS[kind];
-  return new Decimal(Math.max(1, s.cost)).mul(s.tierBase).mul(Decimal.pow(s.tierGrowth, tier));
+  const base = new Decimal(Math.max(1, s.cost)).mul(s.tierBase).mul(Decimal.pow(s.tierGrowth, tier));
+  // The Heart governs everything; its cost ramps super-exponentially so a wall always returns.
+  return kind === 'heart' ? base.mul(Decimal.pow(C.HEART_COST_RAMP, (tier * (tier - 1)) / 2)) : base;
 }
 
 /** Heart exponent α. */
 export const heartAlpha = (m: Mutations) => 1 + 0.05 * m.hypertrophy;
 
 /** Global multiplier M = (1 + 0.1·unspent mutagen) · (1 + 0.02·achievements). */
+export function mutagenMult(unspent: Decimal): Decimal {
+  const cap = C.UNSPENT_MUTAGEN_SOFTCAP;
+  if (unspent.lte(cap)) return unspent.mul(C.UNSPENT_MUTAGEN_BONUS).add(1);
+  return new Decimal(1 + C.UNSPENT_MUTAGEN_BONUS * cap).mul(unspent.div(cap).sqrt());
+}
 export const globalMult = (unspentMutagen: Decimal, achievements = 0) =>
-  unspentMutagen.mul(C.UNSPENT_MUTAGEN_BONUS).add(1).mul(1 + C.ACHIEVEMENT_BONUS * achievements);
+  mutagenMult(unspentMutagen).mul(1 + C.ACHIEVEMENT_BONUS * achievements);
 
 /**
  * Heart synthesis:  E/s = M · ( Π_r (1 + x_r)^(w_r · α) − 1 )
@@ -104,5 +111,7 @@ export function mutagenYield(runEssence: Decimal, depth: number): Decimal {
   return runEssence.div(C.META_THRESHOLD).pow(C.META_EXPONENT).mul(Math.pow(C.DEPTH_YIELD, depth)).floor();
 }
 
-export const mutationCost = (id: MutationId, level: number) =>
-  new Decimal(C.MUTATIONS[id].base).mul(Decimal.pow(C.MUTATIONS[id].growth, level)).floor();
+export const mutationCost = (id: MutationId, level: number) => {
+  const m = C.MUTATIONS[id];
+  return new Decimal(m.base).mul(Decimal.pow(m.growth, level)).mul(Decimal.pow(m.ramp, (level * (level - 1)) / 2)).floor();
+};

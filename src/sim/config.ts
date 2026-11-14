@@ -146,7 +146,10 @@ export const META_THRESHOLD = 1e6;
 export const META_EXPONENT = 0.35;
 export const DEPTH_HAZARD = 1.15; // hazard intensity × DEPTH_HAZARD^depth
 export const DEPTH_YIELD = 1.2; // mutagen yield × DEPTH_YIELD^depth
-export const UNSPENT_MUTAGEN_BONUS = 0.1; // global ×(1 + b·unspent)
+export const UNSPENT_MUTAGEN_BONUS = 0.1; // global ×(1 + b·unspent) up to the softcap…
+export const UNSPENT_MUTAGEN_SOFTCAP = 100; // …then ×(1 + b·cap)·(unspent/cap)^0.5 so it can't feed back into a runaway
+/** Heart tier cost gains an extra ×HEART_COST_RAMP per tier on top of ×45 (cost = 150·45^t·ramp^(t(t−1)/2)). */
+export const HEART_COST_RAMP = 1.1;
 export const ACHIEVEMENT_BONUS = 0.02; // global ×(1 + b·achievements)
 
 export interface MutationSpec {
@@ -154,13 +157,15 @@ export interface MutationSpec {
   blurb: string;
   base: number;
   growth: number;
+  /** Super-exponential ramp: cost = base · growth^L · ramp^(L(L−1)/2). */
+  ramp: number;
   max: number;
 }
 export const MUTATIONS: Record<MutationId, MutationSpec> = {
-  hypertrophy: { name: 'Hypertrophy', blurb: 'Heart exponent α +0.05', base: 1, growth: 3, max: 20 },
-  vascular: { name: 'Vascular Memory', blurb: 'Conduit & ganglion throughput ×1.5', base: 1, growth: 2.2, max: 30 },
-  fecundity: { name: 'Fecundity', blurb: 'Extraction ×1.4', base: 1, growth: 2.5, max: 30 },
-  catalysis: { name: 'Catalysis', blurb: 'Processor speed ×1.35', base: 2, growth: 2.5, max: 30 },
-  chitin: { name: 'Chitin', blurb: 'Integrity loss ×0.85', base: 1, growth: 2, max: 15 },
-  talons: { name: 'Talons', blurb: 'Strike damage ×1.6', base: 1, growth: 2, max: 25 },
+  hypertrophy: { name: 'Hypertrophy', blurb: 'Heart exponent α +0.05', base: 1, growth: 3, ramp: 1.4, max: 40 },
+  vascular: { name: 'Vascular Memory', blurb: 'Conduit & ganglion throughput ×1.5', base: 1, growth: 2.2, ramp: 1.2, max: 50 },
+  fecundity: { name: 'Fecundity', blurb: 'Extraction ×1.4', base: 1, growth: 2.5, ramp: 1.2, max: 50 },
+  catalysis: { name: 'Catalysis', blurb: 'Processor speed ×1.35', base: 2, growth: 2.5, ramp: 1.2, max: 50 },
+  chitin: { name: 'Chitin', blurb: 'Integrity loss ×0.85', base: 1, growth: 2, ramp: 1.25, max: 25 },
+  talons: { name: 'Talons', blurb: 'Strike damage ×1.6', base: 1, growth: 2, ramp: 1.2, max: 50 },
 };

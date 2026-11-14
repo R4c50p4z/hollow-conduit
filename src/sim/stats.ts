@@ -184,7 +184,7 @@ export interface Snapshot {
   sealed: number;
   flowing: number;
   stagnant: number;
-  pressured: number; // above safe threshold
+  pressured: number; // under strain (full and forced by a blocked pump)
   pressureAvg: number;
   pressureMax: number;
   integrityAvg: number;
@@ -248,9 +248,9 @@ export function snapshot(s: SimState): Snapshot {
     if (t.rot > 0.05) rotOnStructures++;
     invested = invested.add(b.invested);
     if (!b.enabled) sealed++;
-    const flows = b.enabled && b.pressure < 0.5 && b.flowEma > C.FLOW_HEALTHY;
+    const flows = b.enabled && !b.strained && b.flowEma > C.FLOW_HEALTHY;
     if (flows) flowing++; else stagnant++;
-    if (b.pressure > C.PRESSURE_SAFE) pressured++;
+    if (b.strained) pressured++;
     iSum += b.integrity;
     if (b.integrity < iMin) iMin = b.integrity;
     if (b.integrity < 0.5) cracked++;
@@ -260,7 +260,7 @@ export function snapshot(s: SimState): Snapshot {
       pSum += b.pressure;
       pN++;
       if (b.pressure > pMax) pMax = b.pressure;
-      bottlenecks.push({ x: i % s.w, y: (i / s.w) | 0, kind: b.kind, pressure: b.pressure, integrity: b.integrity });
+      if (b.strained) bottlenecks.push({ x: i % s.w, y: (i / s.w) | 0, kind: b.kind, pressure: b.pressure, integrity: b.integrity });
     }
     if (b.kind === 'conduit' || b.kind === 'router' || b.kind === 'junction') conduitCapacity += F.conduitThroughput(b.kind === 'router' ? 'router' : 'conduit', b.tier, t.rot, m);
     if (b.enabled && (b.kind === 'tap' || b.kind === 'sporangium')) extraction[b.kind === 'tap' ? 0 : 1] += F.extractionRate(b.kind, b.tier, t.richness, t.rot, m);

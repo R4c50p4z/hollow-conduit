@@ -163,3 +163,46 @@ describe('inline sinks', () => {
     expect(s.stats.run.ruptures).toBe(0);
   });
 });
+
+describe('export', async () => {
+  const { statsJson, historyCsv, cyclesCsv } = await import('../game/export');
+  it('produces parseable JSON and CSV with one row per sample', () => {
+    const s = lab();
+    put(s, 4, 4, 'tap', 2);
+    simulate(s, 35);
+    const j = JSON.parse(statsJson(s));
+    expect(j.allTime.produced[0]).toBeGreaterThan(0);
+    expect(typeof j.essence).toBe('number');
+    const csv = historyCsv(s).split('\n');
+    expect(csv.length).toBe(1 + s.stats.history.t.length);
+    expect(csv[0].split(',').length).toBe(csv[1].split(',').length);
+    expect(cyclesCsv(s).split('\n').length).toBe(1);
+  });
+});
+
+describe('strain', () => {
+  it('a full overflow branch next to a ganglion rests safely; a forced dead end still ruptures', () => {
+    const s = lab();
+    s.depth = 0; // real hazard scale
+    const hx = s.heartX, hy = s.heartY;
+    put(s, hx, hy - 4, 'tap', 2);
+    put(s, hx, hy - 3, 'conduit', 2);
+    put(s, hx, hy - 2, 'router', 0); // splits: south to the Heart, east into a dead-end branch
+    put(s, hx, hy - 1, 'conduit', 2);
+    put(s, hx + 1, hy - 2, 'conduit', 1);
+    put(s, hx + 2, hy - 2, 'conduit', 1); // dead end
+    simulate(s, 600);
+    const branch = s.tiles[idx(s, hx + 2, hy - 2)].building!;
+    expect(branch.pressure).toBeGreaterThan(0.95); // full…
+    expect(branch.strained).toBe(false); // …but at rest
+    expect(s.stats.run.ruptures).toBe(0);
+    expect(s.intake[0]).toBeGreaterThan(0.9); // everything else reaches the Heart
+
+    // Now block the Heart path: the pump backs up and strain reaches the branch.
+    applyCommand(s, { t: 'toggle', x: hx, y: hy - 1 }); // seal the valve
+    simulate(s, 30);
+    expect(s.tiles[idx(s, hx, hy - 4)].building!.strained).toBe(true);
+    for (let i = 0; i < 6000 && !s.stats.run.ruptures; i++) tick(s, C.TICK);
+    expect(s.stats.run.rupturesByCause.pressure).toBeGreaterThan(0);
+  });
+});

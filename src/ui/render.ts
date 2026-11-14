@@ -143,7 +143,7 @@ function drawBuilding(g: CanvasRenderingContext2D, s: SimState, x: number, y: nu
   const col = r >= 0 ? RES_COLOR[r] : P.dim;
 
   // Pressure glow
-  if (b.pressure > PRESSURE_SAFE * 0.8 && b.kind !== 'heart') {
+  if (b.strained && b.kind !== 'heart') {
     const k = Math.min(1, (b.pressure - PRESSURE_SAFE * 0.8) / (1 - PRESSURE_SAFE * 0.8));
     const pulse = 0.5 + 0.5 * Math.sin(time * (4 + 8 * k));
     g.fillStyle = `rgba(255, ${Math.round(160 - 140 * k)}, 40, ${0.12 + 0.25 * k * pulse})`;

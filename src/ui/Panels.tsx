@@ -22,19 +22,32 @@ export function MutationsPanel() {
             <div className="big">{fmt(s.mutagen, 0)}</div>
             <div className="sub">{t('meta.depth', { depth: s.depth })}</div>
           </div>
-          <button
-            className={`act big-act ${gain.gt(0) ? 'glow' : 'poor'}`}
-            onClick={() => {
-              if (gain.lte(0)) return;
-              if (!confirm(t('meta.confirm', { gain: fmt(gain, 0) }))) return;
-              const r = host.dispatch({ t: 'metamorphose' });
-              if (!r.ok) say(reasonText(r));
-              else set({ panel: 'none', selected: null, tool: null });
-            }}
-          >
-            {gain.gt(0) ? t('meta.go', { gain: fmt(gain, 0) }) : t('meta.need', { need: fmt(META_THRESHOLD), have: fmt(s.runEssence) })}
-          </button>
+          {gain.lte(0) && (
+            <button className="act big-act poor">{t('meta.need', { need: fmt(META_THRESHOLD), have: fmt(s.runEssence) })}</button>
+          )}
         </div>
+        {gain.gt(0) && (
+          <>
+            <p className="sub">{t('meta.desc2', { gain: fmt(gain, 0) })}</p>
+            <div className="meta-choice">
+              {[true, false].map((descend) => (
+                <button
+                  key={String(descend)}
+                  className={`act big-act ${descend ? 'glow' : ''}`}
+                  onClick={() => {
+                    if (!confirm(t('meta.confirm', { gain: fmt(gain, 0) }))) return;
+                    const r = host.dispatch({ t: 'metamorphose', descend });
+                    if (!r.ok) say(reasonText(r));
+                    else set({ panel: 'none', selected: null, tool: null });
+                  }}
+                >
+                  {descend ? t('meta.descend', { depth: s.depth + 1 }) : t('meta.stay', { depth: s.depth })}
+                  <small>{descend ? t('meta.descendDesc') : t('meta.stayDesc')}</small>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
         <div className="mutations">
           {(Object.keys(MUTATIONS) as MutationId[]).map((id) => {
             const m = MUTATIONS[id];

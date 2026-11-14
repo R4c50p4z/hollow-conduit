@@ -1,5 +1,6 @@
 import Decimal from 'break_eternity.js';
 import { useState, type ReactNode } from 'react';
+import { cyclesCsv, exportFile, historyCsv, statsJson } from '../game/export';
 import { host } from '../game/host';
 import { useUI } from '../game/store';
 import { useT } from '../i18n';
@@ -10,8 +11,8 @@ import { LineChart, ShareBar } from './Chart';
 import { fmt, fmtDuration, fmtTime, int, num, pct } from './format';
 import { CHART_RES } from './palette';
 
-type Tab = 'now' | 'run' | 'life' | 'charts' | 'runs' | 'ach';
-const TABS: Tab[] = ['now', 'run', 'life', 'charts', 'runs', 'ach'];
+type Tab = 'now' | 'run' | 'life' | 'charts' | 'runs' | 'ach' | 'export';
+const TABS: Tab[] = ['now', 'run', 'life', 'charts', 'runs', 'ach', 'export'];
 
 const Row = ({ k, v, sub }: { k: string; v: ReactNode; sub?: boolean }) => (
   <div className={`srow ${sub ? 'sub-row' : ''}`}>
@@ -58,7 +59,7 @@ export function StatsPanel() {
         <div className="tabs">
           {TABS.map((id) => (
             <button key={id} className={tab === id ? 'on' : ''} onClick={() => setTab(id)}>
-              {t(`st.tab.${id}`)}
+              {id === 'export' ? t('st.export') : t(`st.tab.${id}`)}
             </button>
           ))}
         </div>
@@ -69,6 +70,7 @@ export function StatsPanel() {
           {tab === 'charts' && <ChartsTab />}
           {tab === 'runs' && <RunsTab />}
           {tab === 'ach' && <AchTab />}
+          {tab === 'export' && <ExportTab />}
         </div>
       </div>
     </div>
@@ -374,5 +376,29 @@ function AchTab() {
         })}
       </div>
     </>
+  );
+}
+
+function ExportTab() {
+  const t = useT();
+  const say = useUI((u) => u.say);
+  const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+  const go = async (name: string, mime: string, text: string) => {
+    const r = await exportFile(name, mime, text);
+    say(t(`st.export.${r}`));
+  };
+  const s = host.state;
+  return (
+    <div className="export">
+      <button className="act" onClick={() => go(`hollow-stats-${stamp}.json`, 'application/json', statsJson(s))}>
+        {t('st.export.json')}
+      </button>
+      <button className="act" onClick={() => go(`hollow-series-${stamp}.csv`, 'text/csv', historyCsv(s))}>
+        {t('st.export.history')}
+      </button>
+      <button className="act" onClick={() => go(`hollow-cycles-${stamp}.csv`, 'text/csv', cyclesCsv(s))}>
+        {t('st.export.cycles')}
+      </button>
+    </div>
   );
 }

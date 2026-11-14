@@ -10,6 +10,7 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "probe": "vite-node scripts/probe.ts",
+    "probe:deep": "vite-node scripts/deep-probe.ts",
     "ios:sync": "npm run build && cap sync ios",
     "ios:open": "cap open ios"
   },

@@ -61,6 +61,11 @@ export interface Building {
   invested: Decimal;
   /** Last computed fill fraction 0..1 (pressure). */
   pressure: number;
+  /**
+   * Under strain: full AND being forced by a blocked pump upstream. Only strained structures take
+   * pressure damage. A full overflow branch that its feeder can route around is at rest, and safe.
+   */
+  strained?: boolean;
   /** Sim time when built — for age stats. */
   bornAt?: number;
 }
@@ -252,7 +257,7 @@ export type Command =
   | { t: 'toggle'; x: number; y: number }
   | { t: 'strike'; x: number; y: number }
   | { t: 'mutate'; id: MutationId }
-  | { t: 'metamorphose' };
+  | { t: 'metamorphose'; /** Go one depth deeper (default) or stay at the current depth. */ descend?: boolean };
 
 export type ReasonCode =
   | 'outOfBounds'

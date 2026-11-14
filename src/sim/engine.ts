@@ -306,26 +306,71 @@ export function fillOf(s: SimState, b: Building): number {
   }
 }
 
+const isPump = (k: string) => k === 'tap' || k === 'sporangium' || k === 'digester' || k === 'reactor';
+const isVessel = (k: string) => k === 'conduit' || k === 'router' || k === 'junction';
+
+/**
+ * Strain propagation. Pressure is born at a *blocked pump* (a producer or processor whose output
+ * is full) and travels downstream through vessels that are themselves full, stopping at the first
+ * one with room. Routers forward strain to every full output only when they are full themselves.
+ */
+function computeStrain(s: SimState) {
+  const n = s.tiles.length;
+  const queue: number[] = [];
+  const mark = (x: number, y: number) => {
+    if (!inBounds(s, x, y)) return;
+    const j = idx(s, x, y);
+    const nb = s.tiles[j].building;
+    if (!nb || !isVessel(nb.kind) || nb.strained || nb.pressure <= C.PRESSURE_SAFE) return;
+    nb.strained = true;
+    queue.push(j);
+  };
+  for (let i = 0; i < n; i++) {
+    const b = s.tiles[i].building;
+    if (!b) continue;
+    b.strained = isPump(b.kind) && b.enabled && b.pressure > C.PRESSURE_SAFE;
+  }
+  for (let i = 0; i < n; i++) {
+    const b = s.tiles[i].building;
+    if (b?.strained) mark((i % s.w) + DX[b.dir], ((i / s.w) | 0) + DY[b.dir]);
+  }
+  while (queue.length) {
+    const i = queue.pop()!;
+    const b = s.tiles[i].building!;
+    const x = i % s.w, y = (i / s.w) | 0;
+    if (b.kind === 'conduit') mark(x + DX[b.dir], y + DY[b.dir]);
+    else if (b.kind === 'junction' && b.lanes) {
+      const cap = F.storeCap('junction', b.tier, s.mutations);
+      for (let d = 0; d < 4; d++) if (sum(b.lanes[d]) / cap > C.PRESSURE_SAFE) mark(x + DX[d], y + DY[d]);
+    } else if (b.kind === 'router') for (let d = 0; d < 4; d++) if (!feedsInto(s, x + DX[d], y + DY[d], x, y)) mark(x + DX[d], y + DY[d]);
+  }
+}
+
 function pressure(s: SimState, dt: number, pushed: Float64Array) {
   const m = s.mutations;
   const hz = F.hazardScale(s.depth);
   const k = 1 - Math.exp(-dt / 1.5);
   for (let i = 0; i < s.tiles.length; i++) {
+    const b = s.tiles[i].building;
+    if (!b || b.kind === 'heart') continue;
+    b.flowEma += (pushed[i] / dt - b.flowEma) * k;
+    b.pressure = fillOf(s, b);
+  }
+  computeStrain(s);
+  for (let i = 0; i < s.tiles.length; i++) {
     const t = s.tiles[i];
     if (t.rot > 0.5) count(s, 'rotTileSeconds', dt);
     const b = t.building;
     if (!b || b.kind === 'heart') continue;
-    b.flowEma += (pushed[i] / dt - b.flowEma) * k;
-    const fill = fillOf(s, b);
-    b.pressure = fill;
-    const loss = F.integrityLoss(fill, t.rot, m) * hz;
+    // Only strained structures feel their fill as pressure.
+    const loss = F.integrityLoss(b.strained ? b.pressure : 0, t.rot, m) * hz;
     if (loss > 0) b.integrity -= loss * dt;
-    else if (fill < 0.5) b.integrity = Math.min(1, b.integrity + C.INTEGRITY_REGEN * dt);
-    if (fill > C.PRESSURE_SAFE) {
+    else if (!b.strained) b.integrity = Math.min(1, b.integrity + C.INTEGRITY_REGEN * dt);
+    if (b.strained) {
       t.rot = Math.min(1, t.rot + C.ROT_STAGNATION * dt);
       count(s, 'overpressureSeconds', dt);
     }
-    if (b.integrity <= 0) rupture(s, i, fill > C.PRESSURE_SAFE ? 'pressure' : 'rot');
+    if (b.integrity <= 0) rupture(s, i, b.strained ? 'pressure' : 'rot');
   }
 }
 
@@ -404,7 +449,7 @@ function rotField(s: SimState, dt: number) {
 /** A structure is 'flowing' if it is moving goods and isn't backed up. */
 export function isFlowing(s: SimState, b: Building): boolean {
   if (b.kind === 'heart') return s.intake.some((v) => v > C.FLOW_HEALTHY);
-  return b.enabled && b.pressure < 0.5 && b.flowEma > C.FLOW_HEALTHY;
+  return b.enabled && !b.strained && b.flowEma > C.FLOW_HEALTHY;
 }
 
 // --- 6. Parasites ------------------------------------------------------------------------------

@@ -106,11 +106,16 @@ export const en = {
 
   // Metamorphosis panel
   'meta.title': 'Metamorphosis',
-  'meta.desc': 'Shed this cavern. Everything physical is lost; the Heart descends one depth (hazards ×1.15, yield ×1.2) and mutates. Unspent mutagen strengthens the Heart by +{bonus}% each.',
+  'meta.desc': 'Shed this cavern. Everything physical is lost and the Heart mutates. You may descend one depth (hazards ×1.15, mutagen ×1.2) or remain. Unspent mutagen strengthens the Heart (+{bonus}% each up to 100, then by its square root).',
   'meta.depth': 'mutagen · depth {depth}',
   'meta.go': 'Metamorphose +{gain}',
+  'meta.descend': 'Descend to depth {depth}',
+  'meta.descendDesc': 'Hazards ×1.15, future mutagen ×1.2',
+  'meta.stay': 'Remain at depth {depth}',
+  'meta.stayDesc': 'Same danger, same yield',
   'meta.need': 'Needs {need} this cycle ({have})',
   'meta.confirm': 'Metamorphose for {gain} mutagen? The cavern will be lost.',
+  'meta.desc2': 'Mutagen now: +{gain}. Then choose whether to go deeper:',
   'meta.cycle': 'This cycle: {time} · peak {peak}/s · {r} ruptures · {k} leeches slain',
 
   'mut.hypertrophy.name': 'Hypertrophy',
@@ -301,6 +306,14 @@ export const en = {
   'st.ach.locked': 'Locked',
   'st.table': 'Show as table',
   'st.chart': 'Show as chart',
+  'st.export': 'Export',
+  'st.export.json': 'All stats (JSON)',
+  'st.export.history': 'Time series (CSV)',
+  'st.export.cycles': 'Cycles (CSV)',
+  'st.export.shared': 'Exported',
+  'st.export.downloaded': 'Downloaded',
+  'st.export.copied': 'Copied to clipboard',
+  'st.export.failed': 'Export failed',
 
   // Achievements
   'ach.first_flow.name': 'First Blood', 'ach.first_flow.desc': 'Feed ichor to the Heart.',

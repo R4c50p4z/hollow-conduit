@@ -1,4 +1,5 @@
 import { applyCommand, createState, deserialize, serialize, tick, type Command, type CommandResult, type GameEvent, type SimState } from '../sim';
+import { audio } from './audio';
 import { haptic, prefGet, prefRemove, prefSet } from './native';
 import { TICK } from '../sim/config';
 
@@ -36,6 +37,7 @@ export class SimHost {
 
   constructor() {
     this.state = createState((Math.random() * 2 ** 32) >>> 0);
+    audio.rateSource = () => this.state.rate;
   }
 
   subscribe(fn: () => void) {
@@ -90,8 +92,11 @@ export class SimHost {
     const ev = this.state.events;
     const from = this.seen ? ev.lastIndexOf(this.seen) + 1 : ev.length;
     for (let i = from; i < ev.length; i++) {
-      if (ev[i].kind === 'rupture') haptic('heavy');
-      else if (ev[i].kind === 'achievement' || ev[i].kind === 'wave') haptic('medium');
+      const k = ev[i].kind;
+      if (k === 'rupture') { haptic('heavy'); audio.play('rupture'); }
+      else if (k === 'achievement') { haptic('medium'); audio.play('achievement'); }
+      else if (k === 'wave') { haptic('medium'); audio.play('wave'); }
+      else if (k === 'leech_killed') audio.play('kill');
     }
     this.seen = ev[ev.length - 1] ?? null;
   }

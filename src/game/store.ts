@@ -42,6 +42,7 @@ interface UIState {
   lang: Lang;
   notation: Notation;
   tutorial: boolean;
+  sound: boolean;
   /** Bumped ~8×/s so React HUD re-renders at a calm rate; the canvas draws every frame on its own. */
   frame: number;
   set: (p: Partial<UIState>) => void;
@@ -49,6 +50,7 @@ interface UIState {
   setLang: (l: Lang) => void;
   setNotation: (n: Notation) => void;
   setTutorial: (on: boolean) => void;
+  setSound: (on: boolean) => void;
 }
 
 export const useUI = create<UIState>((set) => ({
@@ -63,6 +65,7 @@ export const useUI = create<UIState>((set) => ({
   lang: initialLang(),
   notation: load('notation') === 'sci' ? 'sci' : 'suffix',
   tutorial: load('tutorial') !== 'off',
+  sound: load('sound') !== 'off',
   frame: 0,
   set: (p) => set(p),
   say: (msg) => set({ toast: { msg, at: Date.now() } }),
@@ -78,5 +81,9 @@ export const useUI = create<UIState>((set) => ({
   setTutorial: (tutorial) => {
     store('tutorial', tutorial ? 'on' : 'off');
     set({ tutorial });
+  },
+  setSound: (sound) => {
+    store('sound', sound ? 'on' : 'off');
+    set({ sound });
   },
 }));

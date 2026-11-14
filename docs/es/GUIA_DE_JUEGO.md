@@ -35,7 +35,16 @@ o purgar. Y todo eso es la respuesta a un fallo que tu diseño permitió.
   ves ×1,0 en vitriolo, te estás dejando el multiplicador más grande sin usar.
 - **◎ (capa):** alterna entre normal, **P** (presión de cada estructura en %) y **R** (podredumbre de cada casilla en %).
   Úsala para encontrar atascos.
-- **⚙ (ajustes):** idioma (castellano/inglés) y notación numérica (sufijos 1,5M o científica 1,5e6).
+- **⚙ (ajustes):** idioma (castellano/inglés), notación numérica (sufijos 1,5M o científica 1,5e6), objetivos guiados
+  y sonido.
+- **Barra de objetivo** (bajo el HUD): te dice el siguiente paso durante la primera sesión (9 objetivos). Se oculta con
+  ✕ o desde Ajustes.
+
+### Sonido
+Todo el sonido se genera al vuelo, sin archivos. El **latido del Corazón se acelera con tu producción** (de ~38
+pulsaciones por minuto en reposo hasta 132), así que puedes «oír» cómo va tu red. Además: chasquido grave cuando algo
+revienta, rumor lejano cuando llega una oleada, chapoteo al golpear y campanilla al conseguir un logro. En el iPhone
+también vibra. iOS solo permite sonido tras el primer toque en la pantalla.
 
 ### El terreno
 

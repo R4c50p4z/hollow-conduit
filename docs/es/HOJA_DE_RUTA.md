@@ -18,6 +18,8 @@
   Corazón y de las mutaciones, tope suave del mutágeno sin gastar y profundidad elegible (Descender/Permanecer).
 - **Exportar estadísticas:** JSON completo, CSV de series temporales y CSV de ciclos.
 - **Gráficas entre ciclos** (pestaña Ciclos): pico de esencia/s, mutágeno, duración y profundidad de cada ciclo.
+- **Sonido procedural** (Web Audio, sin archivos): latido del Corazón ligado a la producción, roturas, oleadas, golpes,
+  construcción y logros. Se puede silenciar.
 - **Objetivos guiados:** 9 objetivos para la primera sesión, desactivables en Ajustes.
 - **iOS:** guardado con el plugin Preferences (iOS puede borrar `localStorage`) y vibración háptica al golpear, en cada
   oleada, al conseguir un logro y al reventar algo.
@@ -39,4 +41,4 @@
    límite sea una decisión deliberada (techo de habilidad).
 4. **Segunda capa de prestigio:** «Esporulación», que permitiría llevarse un plano de construcción entre cavernas.
 5. **Web Worker** para el simulador si la rejilla crece.
-6. **Sonido:** latido del Corazón ligado a la producción, chasquidos al reventar.
+

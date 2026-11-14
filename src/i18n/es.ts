@@ -149,6 +149,7 @@ export const es: Record<Key, string> = {
   'obj.vitriol': 'Lleva bilis y esporas a una Matriz Catalítica y manda el vitriolo al Corazón.',
   'obj.meta': 'Llega a 1M de esencia en un ciclo y Metamorfosea.',
   'settings.tutorial': 'Mostrar objetivos',
+  'settings.sound': 'Sonido',
   'settings.title': 'Ajustes',
   'settings.language': 'Idioma',
   'settings.notation': 'Notación numérica',

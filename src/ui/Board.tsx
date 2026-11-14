@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { host } from '../game/host';
+import { audio } from '../game/audio';
 import { haptic } from '../game/native';
 import { useUI } from '../game/store';
 import { reasonText } from '../i18n/game';
@@ -87,6 +88,7 @@ export function Board() {
       host.dispatch({ t: 'strike', ...p });
       drag.current = null;
       haptic('light');
+      audio.play('strike');
       return;
     }
     drag.current = { last: p, moved: false, built: false };
@@ -94,7 +96,10 @@ export function Board() {
     if (ui.tool && !t.building) {
       const r = host.dispatch({ t: 'build', ...p, kind: ui.tool, dir: ui.dir });
       if (!r.ok) ui.say(reasonText(r));
-      else drag.current.built = true;
+      else {
+        drag.current.built = true;
+        audio.play('build');
+      }
     }
   };
 

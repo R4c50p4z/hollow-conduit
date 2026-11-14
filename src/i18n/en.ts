@@ -160,6 +160,7 @@ export const en = {
   'obj.vitriol': 'Feed bile and spores to a Catalytic Womb; send vitriol to the Heart.',
   'obj.meta': 'Reach 1M essence in a cycle and Metamorphose.',
   'settings.tutorial': 'Show goals',
+  'settings.sound': 'Sound',
   // Settings
   'settings.title': 'Settings',
   'settings.language': 'Language',

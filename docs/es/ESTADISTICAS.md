@@ -162,8 +162,10 @@ muestra todas las muestras en una tabla (la más reciente arriba), útil para co
 
 ## Pestaña «Ciclos»
 
-Una fila por cada metamorfosis: número, profundidad en la que se jugó, duración, **pico de esencia/s**, **esencia total
-del ciclo**, mutágeno obtenido, roturas y sanguijuelas abatidas. La más reciente arriba.
+Arriba, cuatro **gráficas entre ciclos** (a partir de 2 ciclos terminados): pico de esencia/s (log₁₀), mutágeno
+obtenido (log₁₀), duración en minutos y profundidad de cada ciclo. Debajo, la tabla: una fila por cada metamorfosis con
+número, profundidad en la que se jugó, duración, **pico de esencia/s**, **esencia total del ciclo**, mutágeno obtenido,
+roturas y sanguijuelas abatidas. La más reciente arriba.
 
 > Para comparar ciclos: «esencia del ciclo / duración» te da la esencia/s media, y «mutágeno / duración» tu eficiencia
 > de prestigio. Ciclos más cortos con más mutágeno por minuto suelen ser la mejor estrategia una vez tienes Hipertrofia.

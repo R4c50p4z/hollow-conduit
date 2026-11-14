@@ -324,7 +324,18 @@ function RunsTab() {
   const runs = host.state.stats.runs;
   if (!runs.length) return <p className="sub">{t('st.runs.empty')}</p>;
   const e = (l: number) => fmt(Decimal.pow(10, l));
+  const xs = runs.map((_, i) => i + 1);
+  const fx = (x: number) => t('st.runs.cycleN', { n: Math.round(x) });
   return (
+    <>
+    {runs.length >= 2 && (
+      <>
+        <LineChart title={t('st.runs.chartPeak')} xs={xs} ys={runs.map((r) => r.peakRateLog)} fmtY={(v) => num(v, 1)} fmtX={fx} yMin={0} />
+        <LineChart title={t('st.runs.chartMut')} xs={xs} ys={runs.map((r) => Math.log10(1 + r.mutagen))} fmtY={(v) => num(v, 1)} fmtX={fx} yMin={0} />
+        <LineChart title={t('st.runs.chartTime')} xs={xs} ys={runs.map((r) => r.duration / 60)} fmtY={(v) => num(v, 0)} fmtX={fx} yMin={0} />
+        <LineChart title={t('st.runs.chartDepth')} xs={xs} ys={runs.map((r) => r.depth)} fmtY={(v) => num(v, 0)} fmtX={fx} yMin={0} />
+      </>
+    )}
     <div className="table-wrap">
       <table>
         <thead>
@@ -352,6 +363,7 @@ function RunsTab() {
         </tbody>
       </table>
     </div>
+    </>
   );
 }
 

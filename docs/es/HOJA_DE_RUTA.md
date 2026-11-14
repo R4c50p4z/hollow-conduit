@@ -17,6 +17,10 @@
 - **Equilibrado a largo plazo**, gracias a un bot de muchos ciclos (`npm run probe:deep`): rampa supraexponencial del
   Corazón y de las mutaciones, tope suave del mutágeno sin gastar y profundidad elegible (Descender/Permanecer).
 - **Exportar estadísticas:** JSON completo, CSV de series temporales y CSV de ciclos.
+- **Gráficas entre ciclos** (pestaña Ciclos): pico de esencia/s, mutágeno, duración y profundidad de cada ciclo.
+- **Objetivos guiados:** 9 objetivos para la primera sesión, desactivables en Ajustes.
+- **iOS:** guardado con el plugin Preferences (iOS puede borrar `localStorage`) y vibración háptica al golpear, en cada
+  oleada, al conseguir un logro y al reventar algo.
 - Guardado v2 con migración automática desde v1.
 - Documentación completa en castellano (esta carpeta).
 
@@ -27,13 +31,12 @@
 
 ## Próximos pasos (por prioridad)
 
-1. **Equilibrado con personas.** El bot nunca fabrica vitriolo, así que la curva tardía (Corazón 3+, α > 1,1) está sin
-   probar.
-2. **iOS nativo:** generar el proyecto (`npx cap add ios`, requiere Mac con Xcode), guardar con el plugin Preferences
-   (iOS puede borrar `localStorage`) y vibración háptica al reventar y al golpear.
-3. **Tutorial guiado** para los primeros 5 minutos.
-4. **Presión como recurso:** que las líneas entre el 70 % y el 85 % de presión vayan ×1,5 más rápido, para que jugar al
+1. **Equilibrado con personas.** Los bots dan un suelo (1 ciclo) y una curva de 24 h (muchos ciclos), pero no hay
+   sustituto de jugarlo de verdad.
+2. **iOS nativo:** el guardado con Preferences y la vibración ya están integrados; falta generar el proyecto
+   (`npx cap add ios`, requiere Mac con Xcode), el icono y la pantalla de carga.
+3. **Presión como recurso:** que las líneas entre el 70 % y el 85 % de presión vayan ×1,5 más rápido, para que jugar al
    límite sea una decisión deliberada (techo de habilidad).
-5. **Segunda capa de prestigio:** «Esporulación», que permitiría llevarse un plano de construcción entre cavernas.
-7. **Web Worker** para el simulador si la rejilla crece.
-8. **Sonido:** latido del Corazón ligado a la producción, chasquidos al reventar.
+4. **Segunda capa de prestigio:** «Esporulación», que permitiría llevarse un plano de construcción entre cavernas.
+5. **Web Worker** para el simulador si la rejilla crece.
+6. **Sonido:** latido del Corazón ligado a la producción, chasquidos al reventar.

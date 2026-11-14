@@ -10,6 +10,8 @@ interface Props {
   fmtY: (v: number) => string;
   yMin?: number;
   yMax?: number;
+  /** X-axis / tooltip label formatter (defaults to time). */
+  fmtX?: (x: number) => string;
 }
 
 const W = 340, H = 128, PL = 40, PR = 8, PT = 8, PB = 20;
@@ -18,7 +20,7 @@ const W = 340, H = 128, PL = 40, PR = 8, PT = 8, PB = 20;
  * Single-series line chart (one axis, 2px line, recessive grid) with a crosshair + tooltip
  * on hover/touch. Multi-series data is shown as small multiples of this, never overlaid.
  */
-export function LineChart({ title, xs, ys, color = CHART_INK, fmtY, yMin, yMax }: Props) {
+export function LineChart({ title, xs, ys, color = CHART_INK, fmtY, yMin, yMax, fmtX = fmtTime }: Props) {
   const [hover, setHover] = useState<number | null>(null);
   if (xs.length < 2) return null;
   let lo = yMin ?? Math.min(...ys);
@@ -65,10 +67,10 @@ export function LineChart({ title, xs, ys, color = CHART_INK, fmtY, yMin, yMax }
           </g>
         ))}
         <text x={PL} y={H - 4} className="axis">
-          {fmtTime(x0)}
+          {fmtX(x0)}
         </text>
         <text x={W - PR} y={H - 4} className="axis" textAnchor="end">
-          {fmtTime(x1)}
+          {fmtX(x1)}
         </text>
         <path d={d} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
         {hover !== null && (
@@ -81,7 +83,7 @@ export function LineChart({ title, xs, ys, color = CHART_INK, fmtY, yMin, yMax }
                 {fmtY(ys[hover])}
               </text>
               <text x={tipRight ? -86 : 6} y={25} className="tip-t">
-                {fmtTime(xs[hover])}
+                {fmtX(xs[hover])}
               </text>
             </g>
           </g>

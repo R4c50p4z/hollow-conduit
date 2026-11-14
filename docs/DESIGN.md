@@ -1,4 +1,4 @@
-# The Spores of Ruin — Systems Design (v0.1 prototype)
+# The Spores of Ruin — Systems Design (v0.2)
 
 Working title. This document is the source of truth for the math; every constant named here lives in
 [`src/sim/config.ts`](../src/sim/config.ts) and every formula in [`src/sim/formulas.ts`](../src/sim/formulas.ts).
@@ -51,7 +51,7 @@ E/s = M · ( Π_r (1 + x_r)^(w_r · α)  −  1 )  +  pulse
 
 - `x_r` — Heart intake of resource r, units/s (EMA, τ = 2 s), capped at `8 · 2^heartTier` per resource.
 - `α` — Heart exponent, `1 + 0.05 · hypertrophy`. **The main prestige lever.**
-- `M` — global multiplier, `1 + 0.1 · unspentMutagen`.
+- `M` — global multiplier, `mutagenBonus · (1 + 0.02 · achievements)`; see §6 for the mutagen softcap.
 - `pulse` — 0.25 E/s residual heartbeat. Exists only so a fully collapsed network can always crawl back (anti-softlock).
 
 Computed in log₁₀ space (`Σ w·α·log10(1+x)`) then exponentiated into a `break_eternity` Decimal, so the intake values
@@ -80,11 +80,11 @@ E  →  E · 2^(α · Σw)        Σw = 1.0 + 0.5 + 1.5 + 2.2 = 5.2
 ```
 
 so one full-chain tier is worth ×2^5.2 ≈ ×37 at α = 1. The Heart's intake cap sets the ceiling, and its tier cost grows
-×45 per tier. **Since 45 > 37, payback time on Heart tiers grows every tier. That growing payback is the wall.**
+×45 per tier. **Since 45 > 37, payback time on Heart tiers grows every tier. That growing payback is the wall.** In v0.2 the Heart
+also carries a super-exponential ramp: cost = `150 · 45^t · 1.1^(t(t−1)/2)`, so the wall always comes back.
+Hypertrophy only pushes it further out: about Heart tier 6 at α = 1.2, and about tier 17 at α = 1.5.
 
-Hypertrophy breaks it. At α = 1.2 a full tier is worth 2^6.24 ≈ ×76 > 45, so the curve runs away until hazards (which
-scale with `log10(E/s)`, see §4) catch up. Balancing the game means tuning `g_heart` against `2^(α·Σw)` across the
-hypertrophy range.
+Without the ramp (v0.1), any α > 1.06 removed the wall entirely, and a 7-minute cycle reached 1e58.
 
 Building costs grow ×1.04 to ×1.5 per copy owned, depending on kind, so the limited veins and spore beds on each
 map (6 and 4) cap how wide you can go. Past that cap, tiers are the only way up.
@@ -125,12 +125,22 @@ than itself climbs to 100% within seconds.
 
 ## 5. Hazards
 
-### 5.1 Pressure → integrity → rupture
+### 5.1 Pressure → strain → integrity → rupture
+
+Fullness alone does **not** hurt. Pressure is born at a **blocked pump**: a producer or processor whose output buffer
+is above 85% (it is producing and can't get rid of it). From there **strain** propagates downstream through vessels
+that are themselves above 85%, and stops at the first one with room. Conduits pass it along their facing, junctions
+along each full lane, and full routers to every full output. Only strained structures take pressure damage.
+
+This means a dead end fed by a tap still ruptures, and so does a line carrying more than the next segment can move.
+But a **full overflow branch** beside a ganglion that can send the surplus elsewhere is at rest and safe. Without
+strain, overflow designs (the staple of every logistics game) were impossible. The v0.2 multi-cycle bot found that
+those branches cost it 46k essence in cleanses per hour.
 
 ```
-over   = (fill − 0.85) / 0.15                    when fill > 0.85
+over   = (fill − 0.85) / 0.15                    when fill > 0.85 and strained
 loss/s = ( over² / 180  +  [rot > 0.6] / 400 ) · (1 + 2·rot) · 0.85^chitin · 1.15^depth
-regen  = +1/300 per s when fill < 0.5 and nothing is hurting it
+regen  = +1/300 per s when not strained and nothing is hurting it
 ```
 
 A fully blocked vessel on clean rock ruptures in 3 min. On fully rotten rock it takes 1 min. A **rupture** destroys
@@ -186,19 +196,26 @@ scour 0.05·2^tier rot/s across a 5×5 area, only while there's rot to burn).
 mutagen gained = ⌊ (runEssence / 1e6)^0.35 · 1.2^depth ⌋      (needs runEssence ≥ 1e6)
 ```
 
-You get a new procedural cavern with a fresh seed (the layout knowledge you built up is deliberately thrown away),
-`depth + 1` (hazards ×1.15, yield ×1.2), and starting essence back at 40.
+You get a new procedural cavern with a fresh seed (the layout knowledge you built up is deliberately thrown away) and
+starting essence back at 40. Then you **choose**: **Descend** (`depth + 1`: hazards ×1.15, future mutagen ×1.2) or
+**Remain** at the current depth. Descending blindly collapses around depth 33, where hazards outgrow Chitin. Depth is a
+risk/reward dial, not an automatic ramp.
 
-| Mutation | Effect / level | Cost (mutagen) | Max |
+**Unspent-mutagen bonus (softcapped):** `1 + 0.1·m` up to m = 100 (×11), then `11 · √(m/100)`. Linear forever was a
+positive feedback loop (essence → mutagen → bonus → essence).
+
+**Mutation cost:** `base · growth^L · ramp^(L(L−1)/2)`.
+
+| Mutation | Effect / level | base · growth · ramp | Max |
 |---|---|---|---|
-| Hypertrophy | α += 0.05 (exponent on *all* weights) | 1 · 3^L | 20 |
-| Vascular Memory | conduit/ganglion throughput & capacity ×1.5 | 1 · 2.2^L | 30 |
-| Fecundity | extraction ×1.4 | 1 · 2.5^L | 30 |
-| Catalysis | processor speed ×1.35 | 2 · 2.5^L | 30 |
-| Chitin | integrity loss ×0.85 | 1 · 2^L | 15 |
-| Talons | strike damage ×1.6 | 1 · 2^L | 25 |
+| Hypertrophy | α += 0.05 (exponent on *all* weights) | 1 · 3 · 1.4 | 40 |
+| Vascular Memory | conduit/ganglion/junction throughput & capacity ×1.5 | 1 · 2.2 · 1.2 | 50 |
+| Fecundity | extraction ×1.4 | 1 · 2.5 · 1.2 | 50 |
+| Catalysis | processor speed ×1.35 | 2 · 2.5 · 1.2 | 50 |
+| Chitin | integrity loss ×0.85 | 1 · 2 · 1.25 | 25 |
+| Talons | strike damage ×1.6 | 1 · 2 · 1.2 | 50 |
 
-Unspent mutagen adds +10% to M each, so it's always a spend-vs-hold decision.
+**Achievements** (32) each add +2% to M permanently.
 
 ---
 
@@ -221,6 +238,22 @@ takeover, unkillable leeches camping the Heart) and one real bug (the rot evapor
 and that gap is the skill expression. Human playtesting is still needed to tune it.
 
 ---
+
+### Multi-cycle (`npm run probe:deep -- 24`)
+A smarter bot builds the full four-resource refinery (junction, ganglia, inline wards). It finds the real bottleneck,
+metamorphoses when its mutagen-per-minute peaks, descends only after clean cycles, and buys Hypertrophy first. Measured
+over 24 h of continuous play:
+
+| Cycle | ~Hours | Depth | α | Peak E/s |
+|---|---|---|---|---|
+| 1 | 1 | 0 | 1.00 | 1.2e3 |
+| 13 | 2.7 | 12 | 1.15 | 3e5 |
+| 31 | 5 | 30 | 1.35 | 2e14 |
+| 61 | 9 | 35 | 1.40 | 4e15 |
+| 121 | 16 | 35 | 1.45 | 1.6e18 |
+| 175 | 24 | 36 | 1.45 | ~1e19 |
+
+There is no runaway or collapse, and depth settles near 35 on its own.
 
 ## 8. Architecture
 
@@ -249,6 +282,14 @@ scripts/probe.ts  headless balance probe
   bar), hazards included, then shows a report. Nothing is safe to leave unattended.
 
 ---
+
+### v0.2 additions
+- `src/i18n/`: typed en/es dictionaries; the sim emits codes, never prose.
+- `src/sim/stats.ts`: per-cycle and lifetime counters, peaks, a 10 s time series and cycle summaries; `snapshot()` for
+  live network metrics. Panel at `src/ui/StatsPanel.tsx`, export at `src/game/export.ts`.
+- `src/sim/achievements.ts`: 32 achievements, each giving +2% M.
+- `src/game/native.ts`: Capacitor Preferences saves and haptics, with web fallbacks.
+- Save v2, with migration from v1 in `save.ts`.
 
 ## 9. Known gaps / next steps
 

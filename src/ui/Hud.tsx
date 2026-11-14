@@ -51,11 +51,13 @@ export function Hud() {
           const mult = Math.pow(1 + x, HEART_WEIGHTS[r] * alpha);
           return (
             <div key={r} className="res" style={{ ['--c' as string]: RES_COLOR[r] }}>
-              <span className="res-name">{resName(r)}</span>
+              <span className="res-top">
+                <span className="res-name">{resName(r)}</span>
+                <span className="res-mult">×{fmt(mult)}</span>
+              </span>
               <span className="res-bar">
                 <i style={{ width: `${Math.min(100, (x / cap) * 100)}%` }} />
               </span>
-              <span className="res-mult">×{fmt(mult)}</span>
             </div>
           );
         })}

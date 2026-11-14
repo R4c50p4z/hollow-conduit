@@ -23,6 +23,7 @@
 - **Objetivos guiados:** 9 objetivos para la primera sesión, desactivables en Ajustes.
 - **iOS:** guardado con el plugin Preferences (iOS puede borrar `localStorage`) y vibración háptica al golpear, en cada
   oleada, al conseguir un logro y al reventar algo.
+- **Interfaz compacta:** la caverna gana espacio (casilla de 15→24 px en iPhone SE, 29→37 px en Pro Max).
 - Guardado v2 con migración automática desde v1.
 - Documentación completa en castellano (esta carpeta).
 

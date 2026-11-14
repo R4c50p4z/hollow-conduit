@@ -219,3 +219,9 @@ th:first-child, td:first-child { text-align: left; }
   .essence-val { font-size: 20px; }
   .hint { -webkit-line-clamp: 1; }
 }
+.chip.stab.ok { color: var(--essence); border-color: #5a4a33; }
+.chip.stab.warn { color: #ff9a5c; border-color: rgba(255, 122, 43, 0.5); }
+.verdict { margin: 2px 0 6px; font-size: 13px; }
+.verdict.ok { color: var(--essence); }
+.verdict.warn { color: #ff9a5c; }
+.sheet li.good { color: var(--essence); }

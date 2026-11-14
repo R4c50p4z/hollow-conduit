@@ -22,6 +22,19 @@ orden.
 
 ## Pestaña «Ahora»
 
+### Estabilidad (¿se puede dejar sola?)
+Primera sección del panel. Cuatro comprobaciones con ✓/✗:
+
+| Comprobación | Pasa si… |
+|---|---|
+| Estructuras en tensión | 0 |
+| Infecciones de podredumbre | 0 casillas con estructura por encima del 35 % |
+| Tiempo desde la última rotura | ≥ 10 min (o ninguna en el ciclo) |
+| Tiempo desde que huyó una sanguijuela saciada | ≥ 10 min (o ninguna en el ciclo) |
+
+Si las cuatro pasan, verás **✓ Estable** en el HUD: tu red puede funcionar sola, y al volver, el tiempo que pase de las
+12 h simuladas se te acreditará a ritmo constante (hasta 7 días).
+
 ### Corazón
 | Estadística | Qué es | Cómo usarla |
 |---|---|---|

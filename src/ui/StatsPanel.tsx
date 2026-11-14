@@ -5,8 +5,8 @@ import { host } from '../game/host';
 import { useUI } from '../game/store';
 import { useT } from '../i18n';
 import { achDesc, achName, kindName, resName } from '../i18n/game';
-import { ACHIEVEMENTS, ALL_KINDS, snapshot, type Counters, type Kind } from '../sim';
-import { ACHIEVEMENT_BONUS } from '../sim/config';
+import { ACHIEVEMENTS, ALL_KINDS, snapshot, STABLE_WINDOW, type Counters, type Kind } from '../sim';
+import { ACHIEVEMENT_BONUS, ROT_TIPPING } from '../sim/config';
 import { LineChart, ShareBar } from './Chart';
 import { fmt, fmtDuration, fmtTime, int, num, pct } from './format';
 import { CHART_RES } from './palette';
@@ -82,8 +82,19 @@ function NowTab() {
   const s = host.state;
   const n = snapshot(s);
   const kinds = ALL_KINDS.filter((k) => k !== 'heart' && n.byKind[k] > 0);
+  const st = n.stability;
+  const mark = (ok: boolean) => (ok ? '✓ ' : '✗ ');
+  const since = (secs: number, at?: number) =>
+    at === undefined ? t('st.stab.never') : secs >= STABLE_WINDOW ? fmtDuration(secs) : `${fmtDuration(secs)} · ${t('st.stab.need', { t: fmtDuration(STABLE_WINDOW - secs) })}`;
   return (
     <>
+      <Sec title={t('st.sec.stability')}>
+        <p className={`verdict ${st.stable ? 'ok' : 'warn'}`}>{st.stable ? t('st.stab.verdict.ok') : t('st.stab.verdict.no')}</p>
+        <Row k={mark(st.strained === 0) + t('st.stab.strained')} v={int(st.strained)} />
+        <Row k={mark(st.infected === 0) + t('st.stab.infected', { p: pct(ROT_TIPPING) })} v={int(st.infected)} />
+        <Row k={mark(st.sinceRupture >= STABLE_WINDOW) + t('st.stab.rupture')} v={since(st.sinceRupture, s.stats.lastRuptureAt)} />
+        <Row k={mark(st.sinceSated >= STABLE_WINDOW) + t('st.stab.sated')} v={since(st.sinceSated, s.stats.lastSatedAt)} />
+      </Sec>
       <Sec title={t('st.sec.heart')}>
         <Row k={t('st.rate')} v={fmt(s.rate)} />
         <Row k={t('st.essence')} v={fmt(s.essence)} />

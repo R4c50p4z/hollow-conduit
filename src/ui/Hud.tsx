@@ -2,7 +2,7 @@ import { host } from '../game/host';
 import { useUI } from '../game/store';
 import { useT } from '../i18n';
 import { resName } from '../i18n/game';
-import { Formulas as F } from '../sim';
+import { Formulas as F, stabilityOf } from '../sim';
 import { HEART_WEIGHTS, META_THRESHOLD } from '../sim/config';
 import { fmt, fmtTime } from './format';
 import { Objective } from './Objective';
@@ -36,6 +36,7 @@ export function Hud() {
             <span className="threat">{t('hud.waveIn', { wave: s.wave + 1, time: fmtTime(s.waveTimer) })}</span>
           )}
           <div className="hud-btns">
+            <StabilityChip />
             <button className="chip" aria-label={t('hud.stats')} onClick={() => set({ panel: 'stats' })}>
               ▤
             </button>
@@ -64,5 +65,18 @@ export function Hud() {
       </div>
       <Objective />
     </header>
+  );
+}
+
+/** At-a-glance AFK readiness. Tapping it opens the stats panel, whose first section explains it. */
+function StabilityChip() {
+  const t = useT();
+  const set = useUI((u) => u.set);
+  const st = stabilityOf(host.state);
+  const issues = st.strained + st.infected;
+  return (
+    <button className={`chip stab ${st.stable ? 'ok' : 'warn'}`} onClick={() => set({ panel: 'stats' })}>
+      {st.stable ? t('hud.stable') : t('hud.unstable', { n: issues || '…' })}
+    </button>
   );
 }

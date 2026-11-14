@@ -53,6 +53,17 @@ export const en = {
   'hud.feeding': '{n} feeding',
   'hud.meta': 'Metamorphosis',
   'hud.stats': 'Stats',
+  'hud.stable': '✓ Stable',
+  'hud.unstable': '⚠ {n}',
+  'st.sec.stability': 'Stability (safe to leave alone?)',
+  'st.stab.verdict.ok': 'Stable: this network can run on its own.',
+  'st.stab.verdict.no': 'Not stable yet: fix the items marked ✗.',
+  'st.stab.strained': 'Structures under strain',
+  'st.stab.infected': 'Rot infections (above {p})',
+  'st.stab.rupture': 'Time since last rupture',
+  'st.stab.sated': 'Time since a leech escaped sated',
+  'st.stab.need': 'need {t}',
+  'st.stab.never': 'none this cycle',
 
   // Build bar
   'build.idle': 'Pick a structure, or tap the cavern to inspect.',
@@ -175,6 +186,10 @@ export const en = {
   'off.waves': '{n} {n|wave|waves} · {k} leeches slain',
   'off.ruptures': '{n} {n|rupture|ruptures}',
   'off.ok': 'Descend',
+  'off.simulated': '{time} simulated tick by tick',
+  'off.stable': '+{time} more at a steady pace: your network was stable',
+  'off.unstable': 'Your network was not stable at the end, so only the simulated time counts.',
+  'off.capped': 'Absences longer than {days} days count as {days} days.',
   'loading.title': 'The cavern stirs…',
   'loading.desc': 'Simulating the time you were away.',
 

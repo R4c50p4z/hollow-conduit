@@ -150,6 +150,47 @@ su daño. Colócalas cubriendo el camino entre madrigueras y red (alcance: cuadr
 
 ---
 
+## Dejarla sola: jugar sin estrés
+
+**Si diseñas bien la red, aguanta sola indefinidamente.** El peligro viene de los fallos de diseño, nunca del paso del
+tiempo:
+
+- Las sanguijuelas **no se hacen más fuertes con el tiempo**. Su vida depende solo de tu producción y de la profundidad
+  que elegiste. Si tus defensas aguantan una oleada, aguantan todas.
+- El tamaño de las oleadas tiene techo.
+- El desgaste aleatorio (entropía) existe y lo verás, pero **se cura solo** y nunca puede, por sí solo, causar una
+  infección. Tampoco cae nunca sobre el Corazón.
+- Un productor que no puede sacar su producción **se queda quieto** sin dañarse. Lo que revienta son los conductos
+  forzados (callejones sin salida y cuellos de botella).
+
+### El indicador ✓ Estable
+En el HUD verás **✓ Estable** o **⚠ n**. Está estable cuando se cumplen las cuatro condiciones:
+1. 0 estructuras en tensión.
+2. 0 infecciones de podredumbre (casillas con estructura por encima del 35 %).
+3. Ninguna rotura en los últimos 10 minutos.
+4. Ninguna sanguijuela huida saciada en los últimos 10 minutos (si alguna se va saciada, tu defensa no da abasto).
+
+Tócalo y verás cuál falla.
+
+### Receta para una red que dure para siempre
+1. **Ningún conducto en tensión.** Usa la capa P: nada debe brillar en naranja-rojo. Deja **margen**: un tronco al 100 %
+   exacto de su capacidad puede atascarse con cualquier pequeña bajada de caudal. Apunta a un 75 % como máximo.
+2. **Un puesto de defensa en cada madriguera:** un Esporangio que alimente una Guardia de Espinas pegada a la madriguera.
+   Las espinas la protegen: sobre ella las sanguijuelas muerden al 25 % y no pueden robarle las esporas. Es un pararrayos,
+   porque atrae a las sanguijuelas y las mata. Súbela de nivel hasta que **ninguna se escape saciada**.
+3. **Ramas de desbordamiento en vez de callejones sin salida:** si algo puede llenarse, que haya un Ganglio antes para
+   desviar el resto.
+4. Espera a ver **✓ Estable** y vete tranquilo.
+
+### Mientras no estás
+- La caverna se simula **paso a paso hasta 12 horas**.
+- Si en la última hora simulada tu red era estable (0 roturas, nada perdido), **sigue produciendo a ese ritmo** el resto
+  del tiempo, **hasta 7 días**.
+- Si no era estable, solo cuenta lo simulado. Una red frágil se derrumba de verdad mientras duermes.
+
+En las pruebas con el bot, una red con puestos de defensa en las tres madrigueras mantuvo **115 E/s durante 24 horas
+seguidas sin una sola rotura** y con más de 7.000 sanguijuelas abatidas, en las cuatro semillas probadas.
+
 ## La Metamorfosis (prestigio)
 
 Cuando en un ciclo hayas producido **1M de esencia**, puedes metamorfosear:

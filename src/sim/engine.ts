@@ -327,12 +327,12 @@ function computeStrain(s: SimState) {
   };
   for (let i = 0; i < n; i++) {
     const b = s.tiles[i].building;
-    if (!b) continue;
-    b.strained = isPump(b.kind) && b.enabled && b.pressure > C.PRESSURE_SAFE;
+    if (b) b.strained = false;
   }
+  // A blocked pump simply idles (it is never damaged itself) but forces strain into the full vessel ahead.
   for (let i = 0; i < n; i++) {
     const b = s.tiles[i].building;
-    if (b?.strained) mark((i % s.w) + DX[b.dir], ((i / s.w) | 0) + DY[b.dir]);
+    if (b && isPump(b.kind) && b.enabled && b.pressure > C.PRESSURE_SAFE) mark((i % s.w) + DX[b.dir], ((i / s.w) | 0) + DY[b.dir]);
   }
   while (queue.length) {
     const i = queue.pop()!;
@@ -397,6 +397,7 @@ export function rupture(s: SimState, i: number, cause: RuptureCause) {
     if (n) n.rot = Math.min(1, n.rot + C.RUPTURE_ROT_SPLASH);
   }
   count(s, 'ruptures');
+  s.stats.lastRuptureAt = s.time;
   countKind(s, 'rupturesByKind', b.kind);
   s.stats.run.rupturesByCause[cause]++;
   s.stats.life.rupturesByCause[cause]++;
@@ -414,20 +415,28 @@ function rotField(s: SimState, dt: number) {
       const i = y * w + x;
       const r = s.tiles[i].rot;
       let lap = 0;
+      let contagion = 0;
+      const b = s.tiles[i].building;
       for (let d = 0; d < 4; d++) {
         const nx = x + DX[d], ny = y + DY[d];
-        if (nx >= 0 && ny >= 0 && nx < w && ny < h) lap += s.tiles[ny * w + nx].rot - r;
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const nt = s.tiles[ny * w + nx];
+        lap += nt.rot - r;
+        if (b && nt.building && nt.rot > C.ROT_TIPPING && nt.rot > r) contagion += nt.rot - r;
       }
-      const b = s.tiles[i].building;
       const onStructure = !!b;
       let local: number;
       if (!b) local = -C.ROT_BARE_DECAY;
+      else if (b.strained) local = C.ROT_GROWTH * r * (1 - r); // forced stagnation breeds rot
       else if (isFlowing(s, b)) {
         local = -C.ROT_FLUSH; // moving fluid scours its vessel
         flushed += Math.min(r, C.ROT_FLUSH * dt);
-      } else if (b.kind === 'ward' || b.kind === 'cauterizer') local = 0; // valved sinks: inert
-      else local = C.ROT_GROWTH * r * (1 - r); // stagnation breeds rot
-      let v = r + (local + C.ROT_DIFFUSION * lap) * dt;
+      } else if (r > C.ROT_TIPPING) local = C.ROT_GROWTH * r * (1 - r); // an established infection spreads
+      else {
+        local = -C.ROT_REST_DECAY; // small seeds on a healthy, resting structure heal
+        flushed += Math.min(r, C.ROT_REST_DECAY * dt);
+      }
+      let v = r + (local + C.ROT_DIFFUSION * lap + C.ROT_CONTAGION * contagion) * dt;
       // Only bare rock evaporates small amounts; on structures even traces are seeds.
       if (v < (onStructure ? 1e-6 : C.ROT_FLOOR)) v = 0;
       next[i] = Math.min(1, Math.max(0, v));
@@ -438,10 +447,13 @@ function rotField(s: SimState, dt: number) {
 
   // Entropy: random corruption, more frequent the more powerful the network.
   if (rand(s) < F.entropyChance(s.rate, s.depth) * dt) {
-    const cands: number[] = [];
-    s.tiles.forEach((t, i) => t.building && t.building.kind !== 'heart' && cands.push(i));
-    const i = cands.length ? cands[randInt(s, cands.length)] : randInt(s, s.tiles.length);
-    s.tiles[i].rot = Math.min(1, s.tiles[i].rot + C.ENTROPY_SEED_ROT);
+    // Falls anywhere in the cavern (on rock it evaporates, so small outposts aren't singled out), except
+    // on the Heart: a random cut to its intake cap is a shock no design could anticipate.
+    const i = randInt(s, s.tiles.length);
+    // Random wear is visible and heals, but can never by itself push a tile past the tipping point:
+    // only avoidable causes (strain, ruptures, leeches) start a real infection.
+    const t = s.tiles[i];
+    if (i !== idx(s, s.heartX, s.heartY)) t.rot = Math.max(t.rot, Math.min(t.rot + C.ENTROPY_SEED_ROT, C.ROT_TIPPING - 0.05));
     count(s, 'entropySeeds');
   }
 }
@@ -491,15 +503,16 @@ function parasites(s: SimState, dt: number) {
         s.essence = s.essence.sub(lost);
         countE(s, 'heartLeeched', lost);
       } else {
-        const keep = 1 - C.LEECH_DRAIN * dt;
+        const thorns = b.kind === 'ward';
+        const keep = thorns ? 1 : 1 - C.LEECH_DRAIN * dt;
         const bufs = [b.store, b.out, ...(b.lanes ?? [])];
         for (const buf of bufs)
           for (let r = 0; r < 4; r++) {
             countRes(s, 'drained', r, buf[r] * (1 - keep));
             buf[r] *= keep;
           }
-        b.integrity -= C.LEECH_BITE * dt;
-        t.rot = Math.min(1, t.rot + C.LEECH_ROT * dt);
+        b.integrity -= C.LEECH_BITE * (thorns ? C.WARD_BITE_MULT : 1) * dt;
+        t.rot = Math.min(1, t.rot + C.LEECH_ROT * (thorns ? C.WARD_BITE_MULT : 1) * dt);
         if (b.integrity <= 0) {
           rupture(s, idx(s, l.x, l.y), 'leech');
           l.latched = false;
@@ -526,6 +539,7 @@ function parasites(s: SimState, dt: number) {
     }
     if (l.fed >= C.LEECH_SATIATION) {
       count(s, 'leechesSated');
+      s.stats.lastSatedAt = s.time;
       pushEvent(s, { kind: 'leech_sated', x: l.x, y: l.y });
       return false;
     }

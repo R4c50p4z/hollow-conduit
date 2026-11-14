@@ -11,8 +11,9 @@ en `src/sim/formulas.ts`.
 ## 1. El reloj del simulador
 
 - La simulación avanza en **pasos fijos de 0,1 s** (10 por segundo), sea cual sea la velocidad del móvil.
-- Cuando el juego vuelve de segundo plano o se reabre, simula el tiempo perdido con pasos de **0,5 s**, hasta un máximo de
-  **2 horas**.
+- Cuando el juego vuelve de segundo plano o se reabre, simula el tiempo perdido de verdad: pasos de **0,5 s** las primeras
+  2 h y de **1 s** hasta **12 h**. Si la red fue **estable** en la última hora simulada (0 roturas, ninguna estructura
+  perdida), el resto de la ausencia, **hasta 7 días**, se acredita a la producción media de esa hora. Ver §12.
 - Es **determinista**: con la misma semilla y las mismas órdenes da exactamente el mismo resultado. Esto está comprobado
   en los tests, guardando y cargando a mitad de partida.
 
@@ -136,8 +137,9 @@ en segundos.
 
 **Tensión (lo que realmente hace daño).** Estar lleno **no basta** para dañarse. La presión **nace en una bomba
 bloqueada**, es decir, un sangrador, esporangio, digestor o matriz cuya salida pasa del 85 %: está produciendo y no puede
-sacarlo. Desde ahí, la **tensión** viaja aguas abajo por los vasos que también estén por encima del 85 % y se detiene en
-el primero que tiene sitio:
+sacarlo. La bomba en sí **solo se queda quieta, sin dañarse**: así un Esporangio que alimenta directamente una Guardia
+llena es seguro. Pero empuja la **tensión** al vaso que tiene delante, si está lleno, y desde ahí viaja aguas abajo por
+los vasos que también estén por encima del 85 % hasta el primero que tiene sitio:
 
 - **Conducto:** pasa la tensión hacia su flecha.
 - **Cruce:** la pasa por cada carril lleno.
@@ -175,16 +177,27 @@ Cada casilla tiene una podredumbre `r` entre 0 y 1. Cada segundo:
 | Situación de la casilla | Variación local |
 |---|---|
 | Roca desnuda | −0,004 (**cortafuegos**) |
+| Estructura **en tensión** | `+0,01 · r · (1 − r)` (crecimiento logístico) y +0,004 adicional |
 | Estructura **con flujo** (sacando > 0,05/s y sin tensión) | −0,002 (el flujo la arrastra) |
-| Estructura **estancada** (parada, sellada o atascada) | `+0,01 · r · (1 − r)` (crecimiento logístico) |
-| Guardia / Cauterizador | 0 (inertes) |
-| En tensión | +0,004 adicional |
+| Estructura en reposo con **r > 0,35** (infección establecida) | `+0,01 · r · (1 − r)` |
+| Estructura en reposo con **r ≤ 0,35** | −0,0007 (se cura sola) |
+| Estructura vecina de otra infectada (r > 0,35) | `+0,006 · (r_vecina − r)` (**contagio**, solo entre estructuras) |
 | Todas | `+0,0015 · Σ_vecinos (r_vecino − r)` (difusión) |
 
+**El umbral de no retorno (35 %)** separa dos mundos. Por debajo, cualquier estructura sana se cura sola. Por encima,
+la infección se mantiene y avanza por la red (una casilla cada ~10 minutos) hasta que la limpias, la cauterizas o la
+aíslas con roca.
+
 Además:
-- **Entropía:** cada segundo, con probabilidad `0,004 · (1 + 0,5·log₁₀(1+E)) · 1,15^profundidad`, una estructura al
-  azar recibe +0,25. **Una red más potente se corrompe más deprisa.** A 1.000 E/s es aproximadamente una semilla cada
-  2 minutos.
+- **Entropía:** cada segundo, con probabilidad `0,004 · (1 + 0,5·log₁₀(1+E)) · 1,15^profundidad`, una casilla al azar
+  de la caverna recibe hasta +0,25. Tiene tres límites:
+  - **Nunca la sube por encima de 0,30**, por debajo del umbral de no retorno: el desgaste aleatorio no puede iniciar una
+    infección.
+  - Nunca cae sobre el Corazón.
+  - En la roca se evapora enseguida.
+
+  Una red más potente se desgasta más a menudo, pero ese desgaste se cura solo y lo único que hace es bajar el caudal
+  un rato. Por eso conviene dejar margen.
 - **Efectos:** caudal y producción × (1 − 0,75·r); daño a la integridad amplificado; no se puede construir con r ≥ 0,5.
 - **Purificar a mano:** pone la casilla a 0 y cuesta `máx(5, 15 · E/s)` (15 segundos de producción).
 - **Cauterizador:** quema 0,25 · 1,5^t de bilis/s para quitar `0,05 · 2^t` /s en un cuadrado de 5×5, y solo funciona si
@@ -200,18 +213,23 @@ Además:
 
 **Oleadas:**
 - Primera a los **4:00**. Después cada `máx(75, 200 · 0,96^oleada)` s: 192 s, 184 s… hasta 75 s a partir de la oleada 24.
-- Cantidad: `1 + ⌊oleada/3⌋ + ⌊log₁₀(1+E)/2⌋`.
+- Cantidad: `1 + ⌊mín(oleada, 12)/3⌋ + ⌊log₁₀(1+E)/2⌋`. El número de oleada deja de sumar a partir de la 12 (como
+  máximo +4).
 
 **Vida:**
 ```
-vida = 4 · (1 + log₁₀(1+E))^1,5 · 1,05^oleada · 1,15^profundidad
+vida = 4 · (1 + log₁₀(1+E))^1,5 · 1,15^profundidad
 ```
-Su fuerza sigue a **tu producción**, no al reloj. Ejemplos: a 0 E/s en la oleada 0 tienen 4 de vida; a 1.000 E/s en la
-oleada 10, unas 52.
+**El tiempo no las hace más fuertes**, solo tu producción y la profundidad que elegiste. A 0 E/s tienen 4 de vida y a
+1.000 E/s, 32. Hasta la v0.2 crecían además ×1,05 por oleada, y en las pruebas AFK llegaban a tener miles de millones
+de vida a las 9 horas: ninguna red aguantaba dormida.
 
 **Comportamiento:**
 - Avanzan una casilla cada 1,5 s hacia la estructura más cercana (solo van a por el Corazón cuando no queda otra).
 - Enganchadas: chupan el **25 %/s** del contenido, quitan **1 %/s** de integridad y añaden 0,01/s de podredumbre.
+- **Espinas:** sobre una Guardia de Espinas muerden al **25 %** (0,25 %/s y 0,0025/s de podredumbre) y **no pueden
+  chupar sus esporas**. Una Guardia junto a una madriguera hace de pararrayos estable si mata más deprisa de lo que la
+  muerden.
 - En el Corazón: roban el **1 %/s** de tu esencia acumulada.
 - **Saciedad:** tras **45 s** comiendo se van. Así el daño por oleada está acotado y una sanguijuela no puede quedarse para
   siempre en una red muerta.
@@ -305,6 +323,31 @@ Coste del nivel indicado (de ese nivel al siguiente):
 Lista completa en [LOGROS.md](LOGROS.md).
 
 ---
+
+## 12. Tiempo fuera y estabilidad
+
+| Fase | Cómo se calcula |
+|---|---|
+| 0–2 h | Simulación real, pasos de 0,5 s |
+| 2–12 h | Simulación real, pasos de 1 s |
+| 12 h – 7 días | Si la última hora simulada fue estable: `producción media de esa hora × tiempo restante`. Si no, nada. |
+| más de 7 días | Cuenta como 7 días |
+
+**Indicador de estabilidad** (HUD y ▤ → Ahora): 0 en tensión, 0 infecciones (> 35 %), ≥ 10 min sin roturas y ≥ 10 min
+sin sanguijuelas saciadas.
+
+**Prueba AFK** (`npm run probe:deep -- 26 SEMILLA --afk=60`): el bot juega 1 hora, se prepara (sube las Guardias a nivel
+3 y arregla lo que está en tensión) y deja de tocar nada durante 25 horas:
+
+| Semilla | Al irse | Primeros 30 min | De 0,5 h a 24 h |
+|---|---|---|---|
+| 1 | 3 en tensión | 5 roturas (los 3 fallos de diseño) | **0 roturas**, 115,7 E/s constantes |
+| 2 | 3 en tensión | 6 roturas | **0 roturas**, 115,7 E/s |
+| 3 | 4 en tensión | 6 roturas | **0 roturas**, 115,7 E/s |
+| 4 | 4 en tensión | 6 roturas | **0 roturas**, 115,7 E/s |
+
+Lo que estaba mal diseñado reventó enseguida, y lo que quedó era estable y aguantó un día entero sin intervención.
+Exactamente la regla: **diseña bien y dura**.
 
 ## 11. Ritmo medido
 

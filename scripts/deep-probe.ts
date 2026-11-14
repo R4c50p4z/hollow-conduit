@@ -16,6 +16,10 @@ import { createState, idx } from '../src/sim/world';
 const hours = Number(process.argv[2] ?? 4);
 const seed = Number(process.argv[3] ?? 1);
 const verbose = process.argv.includes('-v');
+/** --afk=MIN: play actively for MIN minutes of the first cycle, then stop touching anything. */
+const afkArg = process.argv.find((a) => a.startsWith('--afk='));
+const afkAfter = afkArg ? Number(afkArg.slice(6)) * 60 : Infinity;
+let afkReport = 0;
 
 type P = [number, number, Kind, Dir];
 // Heart at (4,10): N = ichor, W = bile, E = spores, S = vitriol.
@@ -38,6 +42,9 @@ const PLAN: P[] = [
   [2, 6, 'conduit', 2], [2, 7, 'conduit', 2], [2, 8, 'conduit', 2], [2, 9, 'conduit', 2], [2, 11, 'conduit', 1],
   [7, 11, 'conduit', 2], [7, 12, 'conduit', 3], [6, 12, 'conduit', 3], [5, 12, 'conduit', 3], [4, 12, 'conduit', 3], [3, 12, 'conduit', 0],
   [7, 8, 'ward', 2],
+  // 6. a defensive outpost at each burrow: sporangium feeding a terminal ward (it fills, then the pump idles)
+  [2, 0, 'sporangium', 3], [1, 0, 'ward', 3],
+  [6, 1, 'sporangium', 1], [7, 1, 'ward', 1],
 ];
 const terrainFor = (k: Kind) => (k === 'tap' ? 'vein' : k === 'sporangium' ? 'sporebed' : 'rock');
 
@@ -67,6 +74,17 @@ let elapsed = 0;
 while (elapsed < total) {
   tick(s, TICK);
   elapsed += TICK;
+  if (elapsed >= afkAfter) {
+    if (elapsed >= afkReport) {
+      const st = s.stats.run;
+      const n = s.tiles.filter((t) => t.building && t.building.kind !== 'heart').length;
+      console.log(
+        `AFK ${((elapsed - afkAfter) / 3600).toFixed(1).padStart(5)}h  E/s ${fmt(s.rate).padStart(9)}  structures ${String(n).padStart(3)}  ruptures ${st.ruptures} (p${st.rupturesByCause.pressure}/r${st.rupturesByCause.rot}/l${st.rupturesByCause.leech})  wave ${s.wave}  leechHP ${F.leechHp(s.wave, s.depth, s.rate).toFixed(0)}  killed ${st.leechesKilled} sated ${st.leechesSated}  rotAvg ${(s.tiles.reduce((a, t) => a + t.rot, 0) / s.tiles.length).toFixed(3)}  strained ${s.tiles.filter((t) => t.building?.strained).length}`,
+      );
+      afkReport = elapsed + (elapsed - afkAfter < 1800 || (elapsed - afkAfter > 4 * 3600 && elapsed - afkAfter < 8 * 3600) ? 300 : 1800);
+    }
+    continue;
+  }
   if (s.time - lastAct < 1) continue;
   lastAct = s.time;
 
@@ -89,6 +107,14 @@ while (elapsed < total) {
     if (!applyCommand(s, { t: 'build', x, y, kind: k, dir: d }).ok) break;
   }
 
+  // Before going AFK, prepare like a careful player: wards to tier 3, and every strained bottleneck fixed.
+  if (elapsed > afkAfter - 600) {
+    s.tiles.forEach((t, j) => {
+      const b = t.building;
+      if (b?.kind === 'ward' && b.tier < 3) applyCommand(s, { t: 'upgrade', x: j % s.w, y: (j / s.w) | 0 });
+      if (b?.strained) applyCommand(s, { t: 'upgrade', x: j % s.w, y: (j / s.w) | 0 });
+    });
+  }
   // Upgrades: Heart first when affordable; else fix the worst bottleneck; else cheapest producer/processor.
   const hb = s.tiles[idx(s, s.heartX, s.heartY)].building!;
   const heartCost = F.tierCost('heart', hb.tier);
@@ -186,6 +212,7 @@ if (process.argv.includes('-d')) {
   console.log('essence', fmt(s.essence), 'rate', fmt(s.rate), 'intake', s.intake.map((v) => v.toFixed(2)).join(','));
   console.log('spent repair', fmt(r.spentRepair), 'cleanse', fmt(r.spentCleanse), 'upgrade', fmt(r.spentUpgrade), 'build', fmt(r.spentBuild), 'heartLeeched', fmt(r.heartLeeched));
   console.log('ruptures', JSON.stringify(r.rupturesByCause), 'overpressure s', r.overpressureSeconds.toFixed(0));
+  console.log('recent ruptures', s.events.filter((e) => e.kind === 'rupture').map((e) => `${e.params?.kind}@${e.x},${e.y}:${e.params?.cause} t=${e.t.toFixed(0)}`).join('  '));
 }
 console.log(`\nfinal: depth ${s.depth}, α ${F.heartAlpha(s.mutations).toFixed(2)}, best E/s ${fmt(s.stats.bestRate)}, total ${fmt(s.totalEssence)}, achievements ${s.achievements.length}`);
 console.log('mutations', JSON.stringify(s.mutations));

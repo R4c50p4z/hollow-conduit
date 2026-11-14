@@ -2,6 +2,19 @@
 
 ## Registro de cambios
 
+### v0.3: diseña bien y dura para siempre
+- **Las sanguijuelas ya no se fortalecen con el tiempo**, solo con tu producción y la profundidad. El tamaño de las
+  oleadas tiene techo.
+- **Espinas:** sobre una Guardia las sanguijuelas muerden al 25 % y no pueden robarle las esporas.
+- **Productores bloqueados:** se quedan quietos sin dañarse. Las roturas por presión quedan para los conductos forzados.
+- **Podredumbre con umbral de no retorno (35 %)** y contagio entre estructuras. La entropía no puede cruzar el umbral
+  ni cae sobre el Corazón.
+- **Tiempo fuera:** 12 h simuladas paso a paso y, si la red era estable, producción constante hasta 7 días.
+- **Indicador ✓ Estable** en el HUD y sección de estabilidad en las estadísticas.
+- Probado: cuatro semillas, 24 h AFK, 0 roturas tras el arranque.
+- A vigilar: con buenos diseños, descender de profundidad ya casi no se castiga, y la progresión activa a largo plazo
+  es más rápida (α 1,45 a las 8 h frente a las 24 h de antes).
+
 ### v0.2: castellano, estadísticas y logros
 - **Idiomas:** castellano e inglés, con cambio en caliente desde ⚙ Ajustes o la ayuda. Detecta el idioma del móvil la
   primera vez. Coma decimal en castellano.

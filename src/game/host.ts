@@ -1,22 +1,14 @@
 import { applyCommand, createState, deserialize, serialize, tick, type Command, type CommandResult, type GameEvent, type SimState } from '../sim';
+import { runOffline, type OfflineResult } from '../sim/offline';
 import { audio } from './audio';
 import { haptic, prefGet, prefRemove, prefSet } from './native';
 import { TICK } from '../sim/config';
 
 const SAVE_KEY = 'hollow-conduit/save/v1';
-const OFFLINE_CAP = 2 * 3600; // s — the cavern keeps living while you're gone, up to 2h
-const OFFLINE_DT = 0.5; // coarser step for catch-up; the sim is clamp-stable at this dt
 const MAX_TICKS_PER_FRAME = 30;
 const AUTOSAVE_EVERY = 10_000; // ms
 
-export interface OfflineReport {
-  seconds: number;
-  essenceBefore: SimState['essence'];
-  essenceAfter: SimState['essence'];
-  ruptures: number;
-  leechesKilled: number;
-  waves: number;
-}
+export type OfflineReport = OfflineResult;
 
 /**
  * Owns the SimState and drives it with a fixed-timestep accumulator.
@@ -126,34 +118,22 @@ export class SimHost {
   async catchUp(seconds: number, onProgress?: (f: number) => void): Promise<OfflineReport> {
     this.busy = true;
     const s = this.state;
-    const secs = Math.min(seconds, OFFLINE_CAP);
-    const report: OfflineReport = {
-      seconds: secs,
-      essenceBefore: s.essence,
-      essenceAfter: s.essence,
-      ruptures: s.stats.life.ruptures,
-      leechesKilled: s.stats.life.leechesKilled,
-      waves: s.wave,
-    };
-    const steps = Math.floor(secs / OFFLINE_DT);
-    const CHUNK = 400;
-    for (let i = 0; i < steps; i += CHUNK) {
-      for (let k = i; k < Math.min(steps, i + CHUNK); k++) tick(s, OFFLINE_DT);
-      onProgress?.(Math.min(1, (i + CHUNK) / steps));
-      await new Promise((r) => setTimeout(r, 0));
+    const run = runOffline(s, seconds);
+    let r = run.next();
+    while (!r.done) {
+      onProgress?.(r.value);
+      await new Promise((res) => setTimeout(res, 0));
+      r = run.next();
     }
-    report.essenceAfter = s.essence;
-    report.ruptures = s.stats.life.ruptures - report.ruptures;
-    report.leechesKilled = s.stats.life.leechesKilled - report.leechesKilled;
-    report.waves = s.wave - report.waves;
-    s.stats.offlineSeconds += secs;
+    const report = r.value;
+    s.stats.offlineSeconds += report.seconds;
     this.last = performance.now();
     this.acc = 0;
     this.busy = false;
     this.seen = s.events[s.events.length - 1] ?? null; // don't buzz for what happened while away
     this.emit();
     this.save();
-    if (this.onOffline && secs > 30) this.onOffline(report);
+    if (this.onOffline && report.seconds > 30) this.onOffline(report);
     return report;
   }
 

@@ -4,7 +4,8 @@ import { LANGS, useT } from '../i18n';
 import { mutBlurb, mutName, reasonText } from '../i18n/game';
 import { Formulas as F, type MutationId } from '../sim';
 import { META_THRESHOLD, MUTATIONS, UNSPENT_MUTAGEN_BONUS } from '../sim/config';
-import { fmt, fmtTime, int } from './format';
+import { OFFLINE } from '../sim/offline';
+import { fmt, fmtDuration, fmtTime, int } from './format';
 
 export function MutationsPanel() {
   useUI((u) => u.frame);
@@ -179,12 +180,16 @@ export function OfflineModal() {
     <div className="modal" onClick={() => set({ offline: null })}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
         <h2>{t('off.title')}</h2>
-        <p className="sub">{t('off.desc', { time: fmtTime(offline.seconds) })}</p>
+        <p className="sub">{t('off.desc', { time: fmtDuration(offline.seconds) })}</p>
         <ul>
           <li>{t('off.essence', { v: gained.gte(0) ? `+${fmt(gained)}` : `−${fmt(gained.neg())}` })}</li>
+          <li>{t('off.simulated', { time: fmtDuration(offline.simulated) })}</li>
+          {offline.extrapolated > 0 && <li className="good">{t('off.stable', { time: fmtDuration(offline.extrapolated) })}</li>}
+          {offline.extrapolated === 0 && offline.simulated >= OFFLINE.simCap - 1 && <li className="bad">{t('off.unstable')}</li>}
           <li>{t('off.waves', { n: offline.waves, k: offline.leechesKilled })}</li>
           <li className={offline.ruptures ? 'bad' : ''}>{t('off.ruptures', { n: offline.ruptures })}</li>
         </ul>
+        {offline.seconds >= OFFLINE.totalCap - 1 && <p className="sub">{t('off.capped', { days: OFFLINE.totalCap / 86400 })}</p>}
         <button className="act" onClick={() => set({ offline: null })}>
           {t('off.ok')}
         </button>

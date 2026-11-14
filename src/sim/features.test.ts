@@ -201,8 +201,112 @@ describe('strain', () => {
     // Now block the Heart path: the pump backs up and strain reaches the branch.
     applyCommand(s, { t: 'toggle', x: hx, y: hy - 1 }); // seal the valve
     simulate(s, 30);
-    expect(s.tiles[idx(s, hx, hy - 4)].building!.strained).toBe(true);
+    expect(s.tiles[idx(s, hx, hy - 4)].building!.strained).toBe(false); // the blocked tap just idles…
+    expect(s.tiles[idx(s, hx, hy - 3)].building!.strained).toBe(true); // …and strains the full conduit ahead
     for (let i = 0; i < 6000 && !s.stats.run.ruptures; i++) tick(s, C.TICK);
     expect(s.stats.run.rupturesByCause.pressure).toBeGreaterThan(0);
+  });
+});
+
+describe('AFK-safe design', () => {
+  it('a pump feeding a sink directly just idles when the sink is full (no damage)', () => {
+    const s = lab();
+    s.depth = 0;
+    put(s, 2, 2, 'sporangium', 1);
+    const w = put(s, 3, 2, 'ward', 1); // terminal ward: fills and stops accepting
+    simulate(s, 1200);
+    expect(w.store[1]).toBeGreaterThan(7);
+    expect(s.stats.run.ruptures).toBe(0);
+    expect(s.tiles[idx(s, 2, 2)].building!.integrity).toBe(1);
+  });
+
+  it('an entropy-sized seed heals on a resting structure; an infection above the tipping point spreads', () => {
+    const s = lab();
+    for (let x = 2; x <= 6; x++) put(s, x, 3, 'router', 0);
+    s.tiles[idx(s, 2, 3)].rot = C.ENTROPY_SEED_ROT;
+    simulate(s, 600);
+    expect(s.tiles[idx(s, 2, 3)].rot).toBe(0);
+    s.tiles[idx(s, 6, 3)].rot = 0.9;
+    s.tiles[idx(s, 5, 3)].rot = 0.9;
+    simulate(s, 1500);
+    expect(s.tiles[idx(s, 4, 3)].rot).toBeGreaterThan(C.ROT_TIPPING); // creeps along the network
+    expect(s.tiles[idx(s, 5, 2)].rot).toBeLessThan(0.1); // bare rock stays a firebreak
+  });
+
+  it('leech strength never grows with time alone', async () => {
+    const F = await import('./formulas');
+    const r = new Decimal(1000);
+    expect(F.leechHp(500, 0, r)).toBe(F.leechHp(0, 0, r));
+    expect(F.waveCount(500, r)).toBe(F.waveCount(C.WAVE_COUNT_CAP, r));
+  });
+});
+
+describe('offline', async () => {
+  const { simulateOffline, OFFLINE } = await import('./offline');
+  it('a stable network keeps producing for the whole absence (beyond the simulated window)', () => {
+    const s = lab();
+    s.depth = 0;
+    put(s, 4, 4, 'tap', 2);
+    for (let y = 5; y < s.heartY; y++) put(s, 4, y, 'conduit', 2);
+    simulate(s, 30);
+    const before = s.essence;
+    const r = simulateOffline(s, 3 * 86400); // 3 days
+    expect(r.simulated).toBeCloseTo(OFFLINE.simCap, 0);
+    expect(r.stable).toBe(true);
+    expect(r.extrapolated).toBeCloseTo(3 * 86400 - OFFLINE.simCap, 0);
+    // ~1 E/s for 3 days
+    expect(s.essence.sub(before).toNumber()).toBeGreaterThan(0.8 * 3 * 86400);
+  });
+
+  it('an unstable network gets no free extrapolation', () => {
+    const s = lab();
+    s.depth = 0;
+    put(s, 4, 2, 'tap', 2);
+    put(s, 4, 3, 'conduit', 2); // dead end → keeps rupturing/rebuild never happens
+    for (let k = 0; k < 6; k++) put(s, 6, 2 + k, 'conduit', 2);
+    put(s, 6, 1, 'tap', 2); // a second dead end that will burst late in the window
+    const r = simulateOffline(s, 2 * 86400);
+    expect(r.ruptures).toBeGreaterThan(0);
+  });
+});
+
+describe('stability check', async () => {
+  const { stabilityOf, STABLE_WINDOW } = await import('./stats');
+  it('reports stable for a clean network and unstable while something is strained or recently broke', () => {
+    const s = lab();
+    put(s, 4, 4, 'tap', 2);
+    for (let y = 5; y < s.heartY; y++) put(s, 4, y, 'conduit', 2);
+    simulate(s, 30);
+    expect(stabilityOf(s).stable).toBe(true);
+
+    s.depth = 0;
+    put(s, 2, 2, 'tap', 2);
+    put(s, 2, 3, 'conduit', 2); // dead end
+    simulate(s, 30);
+    expect(stabilityOf(s).strained).toBeGreaterThan(0);
+    expect(stabilityOf(s).stable).toBe(false);
+    applyCommand(s, { t: 'toggle', x: 2, y: 2 }); // seal the tap: strain gone…
+    simulate(s, 5);
+    expect(stabilityOf(s).strained).toBe(0);
+    s.stats.lastRuptureAt = s.time; // …but a recent rupture still blocks the verdict
+    expect(stabilityOf(s).stable).toBe(false);
+    simulate(s, STABLE_WINDOW + 1);
+    expect(stabilityOf(s).stable).toBe(true);
+  });
+});
+
+describe('entropy', () => {
+  it('can never by itself push a tile past the tipping point', () => {
+    const s = lab();
+    s.depth = 30; // lots of entropy
+    s.rate = new Decimal(1e30);
+    for (let x = 1; x <= 7; x++) for (let y = 1; y <= 8; y++) put(s, x, y, 'router', 0); // big resting block
+    for (let i = 0; i < 20000; i++) {
+      tick(s, 0.5);
+      s.rate = new Decimal(1e30);
+    }
+    expect(s.stats.run.entropySeeds).toBeGreaterThan(100);
+    expect(Math.max(...s.tiles.map((t) => t.rot))).toBeLessThan(C.ROT_TIPPING);
+    expect(s.stats.run.ruptures).toBe(0);
   });
 });

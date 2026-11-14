@@ -171,6 +171,8 @@ export function closeRun(s: SimState, mutagen: Decimal) {
   st.peakEssence = new Decimal(0);
   st.peakIntake = emptyBuf();
   st.peakLeeches = 0;
+  st.lastRuptureAt = undefined;
+  st.lastSatedAt = undefined;
   st.history = zeroHistory();
 }
 
@@ -211,6 +213,8 @@ export interface Snapshot {
   nextWaveCount: number;
   entropyPerMin: number;
   mutagenIfNow: Decimal;
+  /** AFK readiness: every check must pass for the network to be left alone safely. */
+  stability: { strained: number; infected: number; sinceRupture: number; sinceSated: number; stable: boolean };
   veinsUsed: number;
   veinsTotal: number;
   bedsUsed: number;
@@ -309,9 +313,27 @@ export function snapshot(s: SimState): Snapshot {
     nextWaveCount: F.waveCount(s.wave, s.rate),
     entropyPerMin: F.entropyChance(s.rate, s.depth) * 60,
     mutagenIfNow: F.mutagenYield(s.runEssence, s.depth),
+    stability: stabilityOf(s),
     veinsUsed,
     veinsTotal,
     bedsUsed,
     bedsTotal,
   };
+}
+
+export const STABLE_WINDOW = 600; // s without ruptures or sated leeches
+
+/** Is this network safe to leave alone? Cheap enough to call every UI frame. */
+export function stabilityOf(s: SimState) {
+  let strained = 0, infected = 0;
+  for (const t of s.tiles) {
+    if (!t.building) continue;
+    if (t.building.strained) strained++;
+    if (t.rot > C.ROT_TIPPING) infected++;
+  }
+  const since = (at?: number) => (at === undefined ? Infinity : Math.max(0, s.time - at));
+  const sinceRupture = since(s.stats.lastRuptureAt);
+  const sinceSated = since(s.stats.lastSatedAt);
+  const stable = strained === 0 && infected === 0 && sinceRupture >= STABLE_WINDOW && sinceSated >= STABLE_WINDOW;
+  return { strained, infected, sinceRupture, sinceSated, stable };
 }

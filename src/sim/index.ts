@@ -5,5 +5,5 @@ export { tick, simulate, fillOf, spawnWave, contentsOf } from './engine';
 export { applyCommand, canPlace, cleanseCost, nextBuildCost, repairCost, upgradeCost } from './commands';
 export { createState, resetRun, tileAt, idx } from './world';
 export { serialize, deserialize } from './save';
-export { snapshot, type Snapshot } from './stats';
+export { snapshot, stabilityOf, STABLE_WINDOW, type Snapshot } from './stats';
 export { ACHIEVEMENTS, achievementMult } from './achievements';

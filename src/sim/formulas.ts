@@ -97,10 +97,12 @@ export const entropyChance = (rate: Decimal, depth: number) =>
 export const waveInterval = (wave: number) =>
   Math.max(C.WAVE_MIN_INTERVAL, C.WAVE_INTERVAL * Math.pow(C.WAVE_DECAY, wave));
 
-export const waveCount = (wave: number, rate: Decimal) => 1 + Math.floor(wave / 3) + Math.floor(powerLevel(rate) / 2);
+export const waveCount = (wave: number, rate: Decimal) =>
+  1 + Math.floor(Math.min(wave, C.WAVE_COUNT_CAP) / 3) + Math.floor(powerLevel(rate) / 2);
 
-export const leechHp = (wave: number, depth: number, rate: Decimal) =>
-  C.LEECH_HP * Math.pow(1 + powerLevel(rate), C.LEECH_HP_POWER_EXP) * Math.pow(C.LEECH_HP_GROWTH, wave) * hazardScale(depth);
+/** Leech HP: follows your output and chosen depth only — time alone never makes them stronger. */
+export const leechHp = (_wave: number, depth: number, rate: Decimal) =>
+  C.LEECH_HP * Math.pow(1 + powerLevel(rate), C.LEECH_HP_POWER_EXP) * hazardScale(depth);
 
 export const strikeDamage = (m: Mutations) => C.STRIKE_DAMAGE * Math.pow(1.6, m.talons);
 

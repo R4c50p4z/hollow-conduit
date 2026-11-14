@@ -1,4 +1,14 @@
-# The Spores of Ruin — Systems Design (v0.2)
+# The Spores of Ruin — Systems Design (v0.3)
+
+> **v0.3 design principle (player request): design well and it lasts forever.** Threat never scales with time alone:
+> leech HP depends only on output and chosen depth, wave size is capped, random entropy can never by itself start an
+> infection (it is capped below the 35% tipping point and never lands on the Heart), and a blocked pump idles instead
+> of rupturing. Thorn Wards take 25% bites and can't be drained, so a ward at a burrow is a stable lightning rod. Time
+> away is simulated for 12 h, and if the last simulated hour was stable (no ruptures, nothing lost) production continues
+> at that hour's average for up to 7 days. A HUD **✓ Stable** chip shows readiness: no strain, no infections (rot >
+> 0.35 on a structure), and no rupture or sated leech for 10 min. Verified with `npm run probe:deep -- 26 SEED --afk=60`:
+> on four seeds, after the bot's own design faults burst in the first 30 min, the network held 115.7 E/s for 24 h with
+> zero ruptures.
 
 Working title. This document is the source of truth for the math; every constant named here lives in
 [`src/sim/config.ts`](../src/sim/config.ts) and every formula in [`src/sim/formulas.ts`](../src/sim/formulas.ts).

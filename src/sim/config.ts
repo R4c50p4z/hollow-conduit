@@ -102,6 +102,11 @@ export const ROT_FLUSH = 0.002; // rot/s washed out of structures with healthy f
 export const FLOW_HEALTHY = 0.05; // units/s of outflow that counts as 'flowing' // logistic r' = g·r(1−r)
 export const ROT_DIFFUSION = 0.0015; // keep 4·D < g so seeds on structures still grow
 export const ROT_BARE_DECAY = 0.004; // rot/s lost on bare rock → gaps act as firebreaks
+/** Tipping point: on structures at rest (not flowing, not strained) rot below this heals, above it spreads. */
+export const ROT_TIPPING = 0.35;
+/** Infected structures (rot > tipping) push rot into neighbouring *structures* along the network. */
+export const ROT_CONTAGION = 0.006;
+export const ROT_REST_DECAY = 0.0007; // < diffusion·(1−tipping) so an established infection still creeps to neighbours; // rot/s healed on resting structures below the tipping point
 export const ROT_STAGNATION = 0.004; // rot/s on tiles with fill > PRESSURE_SAFE
 export const ROT_FLOOR = 0.005; // rot below this evaporates
 export const ROT_NO_BUILD = 0.5;
@@ -124,11 +129,17 @@ export const WAVE_INTERVAL = 200;
 export const WAVE_DECAY = 0.96;
 export const WAVE_MIN_INTERVAL = 75;
 export const LEECH_HP = 4;
-export const LEECH_HP_GROWTH = 1.05; // per wave (time pressure)
+/**
+ * No per-wave growth: threat depends on what you've built (output) and how deep you chose to go,
+ * never on how long you've been away. A defence that holds one wave holds them all.
+ */
+export const WAVE_COUNT_CAP = 12; // wave index stops adding leeches after this (max +4)
 export const LEECH_HP_POWER_EXP = 1.5; // × (1 + log10(E/s))^exp — threat tracks your network
 export const LEECH_MOVE_CD = 1.5;
 export const LEECH_DRAIN = 0.25; // fraction of contents/s
 export const LEECH_BITE = 1 / 100; // integrity/s
+/** Thorns: leeches bite a Thorn Ward at this fraction and can't drain its spore reserve. */
+export const WARD_BITE_MULT = 0.25;
 export const LEECH_ROT = 0.01;
 export const LEECH_HEART_DRAIN = 0.01; // fraction of essence/s
 export const LEECH_SATIATION = 45; // s of feeding before a leech is sated and burrows away (bounds per-wave damage, prevents softlock)

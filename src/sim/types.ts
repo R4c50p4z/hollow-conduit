@@ -206,6 +206,9 @@ export interface Stats {
   longestRun: number;
   offlineSeconds: number;
   sessions: number;
+  /** Cycle time of the last rupture / last leech that escaped sated (for the stability check). */
+  lastRuptureAt?: number;
+  lastSatedAt?: number;
   history: History;
   runs: RunSummary[];
 }

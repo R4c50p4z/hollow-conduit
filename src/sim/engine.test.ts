@@ -139,15 +139,16 @@ describe('flow network', () => {
 });
 
 describe('hazards', () => {
-  it('rot grows logistically and spreads to neighbours', () => {
+  it('an established infection persists and creeps along structures; bare rock is a firebreak', () => {
     const s = lab();
     noEntropy(s);
     for (let y = 3; y <= 5; y++) for (let x = 4; x <= 6; x++) put(s, x, y, 'router', 0); // inert structure block
-    s.tiles[idx(s, 5, 4)].rot = 0.3;
-    simulate(s, 400);
-    expect(s.tiles[idx(s, 5, 4)].rot).toBeGreaterThan(0.4);
-    expect(s.tiles[idx(s, 5, 5)].rot).toBeGreaterThan(0.1); // spreads along the structure
-    expect(s.tiles[idx(s, 3, 4)].rot).toBeLessThan(0.05); // bare rock acts as a firebreak
+    s.tiles[idx(s, 5, 4)].rot = 0.9;
+    s.tiles[idx(s, 5, 5)].rot = 0.9;
+    simulate(s, 1200);
+    expect(s.tiles[idx(s, 5, 4)].rot).toBeGreaterThan(0.5);
+    expect(s.tiles[idx(s, 5, 3)].rot).toBeGreaterThan(C.ROT_TIPPING);
+    expect(s.tiles[idx(s, 3, 4)].rot).toBeLessThan(0.1);
   });
 
   it('cauterizer burns bile to scour rot', () => {

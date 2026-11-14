@@ -1,4 +1,5 @@
-import { applyCommand, createState, deserialize, serialize, tick, type Command, type CommandResult, type SimState } from '../sim';
+import { applyCommand, createState, deserialize, serialize, tick, type Command, type CommandResult, type GameEvent, type SimState } from '../sim';
+import { haptic, prefGet, prefRemove, prefSet } from './native';
 import { TICK } from '../sim/config';
 
 const SAVE_KEY = 'hollow-conduit/save/v1';
@@ -71,6 +72,7 @@ export class SimHost {
         n++;
       }
       if (n === MAX_TICKS_PER_FRAME) this.acc = 0;
+      if (n) this.feelEvents();
       if (now - this.lastSave > AUTOSAVE_EVERY) this.save();
     };
     this.raf = requestAnimationFrame(loop);
@@ -82,27 +84,31 @@ export class SimHost {
     cancelAnimationFrame(this.raf);
   }
 
+  /** Haptic feedback for events that happened since the last frame (live play only, not catch-up). */
+  private seen: GameEvent | null = null;
+  private feelEvents() {
+    const ev = this.state.events;
+    const from = this.seen ? ev.lastIndexOf(this.seen) + 1 : ev.length;
+    for (let i = from; i < ev.length; i++) {
+      if (ev[i].kind === 'rupture') haptic('heavy');
+      else if (ev[i].kind === 'achievement' || ev[i].kind === 'wave') haptic('medium');
+    }
+    this.seen = ev[ev.length - 1] ?? null;
+  }
+
   save() {
     this.lastSave = performance.now();
-    try {
-      localStorage.setItem(SAVE_KEY, JSON.stringify({ at: Date.now(), state: serialize(this.state) }));
-    } catch {
-      /* storage unavailable (private mode) — play continues unsaved */
-    }
+    prefSet(SAVE_KEY, JSON.stringify({ at: Date.now(), state: serialize(this.state) }));
   }
 
   /** Load the save and simulate the time spent away. Returns a report if meaningful time passed. */
   async load(onProgress?: (f: number) => void): Promise<OfflineReport | null> {
-    let raw: string | null = null;
-    try {
-      raw = localStorage.getItem(SAVE_KEY);
-    } catch {
-      return null;
-    }
+    const raw = await prefGet(SAVE_KEY);
     if (!raw) return null;
     try {
       const { at, state } = JSON.parse(raw) as { at: number; state: string };
       this.state = deserialize(state);
+      this.seen = this.state.events[this.state.events.length - 1] ?? null;
       const away = (Date.now() - at) / 1000;
       if (away < 30) return null;
       return await this.catchUp(away, onProgress);
@@ -139,6 +145,7 @@ export class SimHost {
     this.last = performance.now();
     this.acc = 0;
     this.busy = false;
+    this.seen = s.events[s.events.length - 1] ?? null; // don't buzz for what happened while away
     this.emit();
     this.save();
     if (this.onOffline && secs > 30) this.onOffline(report);
@@ -148,14 +155,12 @@ export class SimHost {
   onOffline: ((r: OfflineReport) => void) | null = null;
 
   hardReset() {
-    try {
-      localStorage.removeItem(SAVE_KEY);
-    } catch {
-      /* ignore */
-    }
+    prefRemove(SAVE_KEY);
     this.state = createState((Math.random() * 2 ** 32) >>> 0);
+    this.seen = null;
     this.emit();
   }
+
 }
 
 export const host = new SimHost();

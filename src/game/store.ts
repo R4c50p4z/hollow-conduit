@@ -41,12 +41,14 @@ interface UIState {
   loading: number | null;
   lang: Lang;
   notation: Notation;
+  tutorial: boolean;
   /** Bumped ~8×/s so React HUD re-renders at a calm rate; the canvas draws every frame on its own. */
   frame: number;
   set: (p: Partial<UIState>) => void;
   say: (msg: string) => void;
   setLang: (l: Lang) => void;
   setNotation: (n: Notation) => void;
+  setTutorial: (on: boolean) => void;
 }
 
 export const useUI = create<UIState>((set) => ({
@@ -60,6 +62,7 @@ export const useUI = create<UIState>((set) => ({
   loading: null,
   lang: initialLang(),
   notation: load('notation') === 'sci' ? 'sci' : 'suffix',
+  tutorial: load('tutorial') !== 'off',
   frame: 0,
   set: (p) => set(p),
   say: (msg) => set({ toast: { msg, at: Date.now() } }),
@@ -71,5 +74,9 @@ export const useUI = create<UIState>((set) => ({
   setNotation: (notation) => {
     store('notation', notation);
     set({ notation });
+  },
+  setTutorial: (tutorial) => {
+    store('tutorial', tutorial ? 'on' : 'off');
+    set({ tutorial });
   },
 }));

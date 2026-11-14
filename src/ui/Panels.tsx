@@ -128,7 +128,7 @@ function LangPicker() {
 
 export function SettingsPanel() {
   const t = useT();
-  const { set, notation, setNotation } = useUI();
+  const { set, notation, setNotation, tutorial, setTutorial } = useUI();
   return (
     <div className="modal" onClick={() => set({ panel: 'none' })}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
@@ -142,6 +142,12 @@ export function SettingsPanel() {
           </button>
           <button className={`act ${notation === 'sci' ? 'on' : ''}`} onClick={() => setNotation('sci')}>
             {t('settings.sci')}
+          </button>
+        </div>
+        <h3>{t('settings.tutorial')}</h3>
+        <div className="seg">
+          <button className={`act ${tutorial ? 'on' : ''}`} onClick={() => setTutorial(!tutorial)}>
+            {tutorial ? '✓' : '—'} {t('settings.tutorial')}
           </button>
         </div>
         <h3>&nbsp;</h3>

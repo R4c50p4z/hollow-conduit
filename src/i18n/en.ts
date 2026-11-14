@@ -147,6 +147,19 @@ export const en = {
   'help.erase': 'Erase save',
   'help.eraseConfirm': 'Erase everything and start over?',
 
+  // Tutorial objectives
+  'obj.label': 'Goal',
+  'obj.hide': 'Hide goals',
+  'obj.tap': 'Pick Tap and place it on a red vein.',
+  'obj.connect': 'Pick Conduit and drag from the tap to the Heart.',
+  'obj.spores': 'Bring spores to the Heart through another side.',
+  'obj.digester': 'Build a Digester on the ichor line and send bile to the Heart.',
+  'obj.heart': 'Tap the Heart and Upgrade it.',
+  'obj.strike': 'Tap a leech until it dies.',
+  'obj.ward': 'Build a Thorn Ward on a spore line, near a burrow.',
+  'obj.vitriol': 'Feed bile and spores to a Catalytic Womb; send vitriol to the Heart.',
+  'obj.meta': 'Reach 1M essence in a cycle and Metamorphose.',
+  'settings.tutorial': 'Show goals',
   // Settings
   'settings.title': 'Settings',
   'settings.language': 'Language',

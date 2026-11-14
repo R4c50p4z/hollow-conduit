@@ -5,6 +5,7 @@ import { resName } from '../i18n/game';
 import { Formulas as F } from '../sim';
 import { HEART_WEIGHTS, META_THRESHOLD } from '../sim/config';
 import { fmt, fmtTime } from './format';
+import { Objective } from './Objective';
 import { RES_COLOR } from './palette';
 
 export function Hud() {
@@ -59,6 +60,7 @@ export function Hud() {
           );
         })}
       </div>
+      <Objective />
     </header>
   );
 }

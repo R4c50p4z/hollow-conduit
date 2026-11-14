@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { host } from '../game/host';
+import { haptic } from '../game/native';
 import { useUI } from '../game/store';
 import { reasonText } from '../i18n/game';
 import type { Dir } from '../sim';
@@ -85,7 +86,7 @@ export function Board() {
     if (s.leeches.some((l) => l.x === p.x && l.y === p.y)) {
       host.dispatch({ t: 'strike', ...p });
       drag.current = null;
-      navigator.vibrate?.(8);
+      haptic('light');
       return;
     }
     drag.current = { last: p, moved: false, built: false };

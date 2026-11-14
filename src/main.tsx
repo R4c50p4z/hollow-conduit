@@ -22,5 +22,12 @@ async function boot() {
 
 void boot();
 
+// Installable web app: offline cache (HTTPS only, production builds only) and ask the browser to
+// keep our storage. Home-screen web apps on iOS keep their data; this is an extra safeguard.
+if (import.meta.env.PROD && 'serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  window.addEventListener('load', () => void navigator.serviceWorker.register('./sw.js').catch(() => {}));
+}
+void navigator.storage?.persist?.().catch(() => {});
+
 // Debug handle for console / automated playtests.
 (window as unknown as { hollow: typeof host }).hollow = host;

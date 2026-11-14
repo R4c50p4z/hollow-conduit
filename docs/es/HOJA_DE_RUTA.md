@@ -2,6 +2,11 @@
 
 ## Registro de cambios
 
+### v0.3.1: app web instalable
+- Se instala desde Safari en la pantalla de inicio, a pantalla completa y con icono propio, y funciona sin conexión.
+- Despliegue listo para Netlify (gratis con repos privados) y GitHub Pages. Guía en `INSTALAR.md`.
+- Se descarta la app nativa (Xcode). El código de Capacitor queda dormido, sin coste.
+
 ### v0.3: diseña bien y dura para siempre
 - **Las sanguijuelas ya no se fortalecen con el tiempo**, solo con tu producción y la profundidad. El tamaño de las
   oleadas tiene techo.
@@ -49,8 +54,7 @@
 
 1. **Equilibrado con personas.** Los bots dan un suelo (1 ciclo) y una curva de 24 h (muchos ciclos), pero no hay
    sustituto de jugarlo de verdad.
-2. **iOS nativo:** el guardado con Preferences y la vibración ya están integrados; falta generar el proyecto
-   (`npx cap add ios`, requiere Mac con Xcode), el icono y la pantalla de carga.
+2. **Copia de seguridad de la partida:** exportar/importar el guardado como texto, para no perderlo si se borra la app.
 3. **Presión como recurso:** que las líneas entre el 70 % y el 85 % de presión vayan ×1,5 más rápido, para que jugar al
    límite sea una decisión deliberada (techo de habilidad).
 4. **Segunda capa de prestigio:** «Esporulación», que permitiría llevarse un plano de construcción entre cavernas.

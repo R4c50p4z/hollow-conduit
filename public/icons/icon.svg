@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="54%" r="48%">
+      <stop offset="0" stop-color="#c11f35" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#c11f35" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="#0b0907"/>
+  <g stroke="#d9cfbf" stroke-opacity="0.06" stroke-width="3">
+    <path d="M40 120l60-60M90 470l70-70M380 90l70-70M400 480l70-70M30 330l50-50M440 300l50-50"/>
+  </g>
+  <g stroke="#c11f35" stroke-opacity="0.55" stroke-width="7" fill="none" stroke-linecap="round">
+    <path d="M256 140 L250 90 L272 52"/>
+    <path d="M150 230 L96 214 L60 236"/>
+    <path d="M362 230 L414 206 L456 220"/>
+    <path d="M256 412 L262 456"/>
+  </g>
+  <circle cx="256" cy="276" r="230" fill="url(#glow)"/>
+  <path d="M256 412 C 120 330, 110 200, 186 172 C 222 158, 248 182, 256 206 C 264 182, 290 158, 326 172 C 402 200, 392 330, 256 412 Z"
+        fill="#4a0d16" stroke="#c11f35" stroke-width="12" stroke-linejoin="round"/>
+  <path d="M206 222 Q 248 262 262 330" fill="none" stroke="#f0e3c4" stroke-opacity="0.45" stroke-width="6" stroke-linecap="round"/>
+</svg>

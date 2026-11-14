@@ -5,7 +5,8 @@ fórmulas exactas, cada estructura con sus números, qué significa cada estadí
 
 | Documento | Para qué sirve |
 |---|---|
-| [GUIA_DE_JUEGO.md](GUIA_DE_JUEGO.md) | Cómo se juega, paso a paso. Los primeros 30 minutos, errores típicos y estrategia. **Empieza aquí.** |
+| [INSTALAR.md](INSTALAR.md) | Cómo publicarlo gratis e instalarlo en el iPhone sin Mac ni Xcode. **Empieza aquí si quieres jugarlo ya.** |
+| [GUIA_DE_JUEGO.md](GUIA_DE_JUEGO.md) | Cómo se juega, paso a paso. Los primeros 30 minutos, errores típicos y estrategia. **Empieza aquí para aprender a jugar.** |
 | [MECANICAS.md](MECANICAS.md) | Todas las reglas del simulador con sus fórmulas: el Corazón, el flujo, la presión, la podredumbre, las sanguijuelas y la metamorfosis. |
 | [ESTRUCTURAS.md](ESTRUCTURAS.md) | Ficha técnica de cada estructura: costes, caudales, capacidades y tablas de mejora. |
 | [ESTADISTICAS.md](ESTADISTICAS.md) | Cada estadística del panel ▤: qué mide, cómo se calcula y cómo leerla para optimizar. |

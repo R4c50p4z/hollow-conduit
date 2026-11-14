@@ -19,9 +19,15 @@ npm run probe      # headless balance probe: npm run probe -- <minutes> <seed>
 npm run build      # typecheck + production bundle in dist/
 ```
 
-## iOS (Capacitor)
+## Install on iPhone (no Mac needed)
 
-Capacitor 6 is configured (`capacitor.config.ts`, `webDir: dist`). On a Mac with Xcode:
+The game ships as an installable web app (manifest + offline service worker). Deploy `dist/` to any HTTPS host
+(`netlify.toml` and a GitHub Pages workflow are included), open it in Safari → Share → **Add to Home Screen**.
+Step-by-step in Spanish: [`docs/es/INSTALAR.md`](docs/es/INSTALAR.md).
+
+## Native iOS (optional, dormant)
+
+Capacitor 6 is configured but not required (`capacitor.config.ts`, `webDir: dist`). On a Mac with Xcode:
 
 ```bash
 npx cap add ios    # once: generates the native ios/ project

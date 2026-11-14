@@ -41,7 +41,7 @@ E/s = M · ( Π_r (1 + x_r)^(w_r · α)  −  1 )  +  0,25
 | `x_r` | Ingesta del recurso r (media móvil exponencial, τ = 2 s) | 0 … tope |
 | `w_r` | Peso del recurso | icor **1,0** · esporas **0,5** · bilis **1,5** · vitriolo **2,2** |
 | `α` | Exponente del Corazón | `1 + 0,05 · Hipertrofia` |
-| `M` | Multiplicador global | `(1 + 0,1 · mutágeno sin gastar) · (1 + 0,02 · logros)` |
+| `M` | Multiplicador global | `bonus_mutágeno · (1 + 0,02 · logros)` (ver §9) |
 | `0,25` | Latido residual | Evita quedarse bloqueado sin ingresos si la red colapsa entera |
 
 **Tope de ingesta:** `8 · 2^t` unidades/s **por recurso** (8, 16, 32, 64…). Lo que llegue por encima se acumula en el
@@ -67,9 +67,14 @@ Si mejoras **toda** una cadena un nivel, cada `x` se duplica y:
 E  →  E · 2^(α · Σw)        con Σw = 5,2 → ×37 por nivel (α = 1)
 ```
 
-Pero cada nivel del Corazón cuesta **×45** más que el anterior. Como 45 > 37, el tiempo que tarda en amortizarse cada
-mejora del Corazón **crece**: eso es el muro. La Hipertrofia lo rompe. Con α = 1,2 un nivel completo vale 2^6,24 ≈ ×76,
-que ya supera ×45, y la curva se dispara hasta que los peligros (que escalan con log₁₀ E) la alcanzan.
+Pero el nivel t del Corazón cuesta `150 · 45^t · 1,1^(t(t−1)/2)`: cada nivel encarece ×45 **y además** un 10 % más que
+el anterior (×45, ×49,5, ×54,5…). Como 45 > 37, el tiempo que tarda en amortizarse cada mejora del Corazón **crece**: eso
+es el muro.
+
+La Hipertrofia lo empuja más lejos, pero **nunca lo elimina**. Con α = 1,2 un nivel completo vale 2^6,24 ≈ ×76, así que
+el muro aparece hacia el nivel 6 del Corazón. Con α = 1,5 vale ×223 y aparece hacia el nivel 17. Esta rampa
+supraexponencial se añadió en la v0.2 porque, sin ella, en cuanto α pasaba de 1,06 un solo ciclo de 7 minutos llegaba a
+10⁵⁸.
 
 ---
 
@@ -119,9 +124,9 @@ en segundos.
 
 ---
 
-## 5. Presión e integridad
+## 5. Presión, tensión e integridad
 
-**Presión** (`p`):
+**Presión** (`p`), lo lleno que está algo:
 - Conducto / Ganglio: contenido / capacidad.
 - Cruce: el carril más lleno.
 - Sangrador / Esporangio / Digestor / Matriz: búfer de salida / capacidad de salida. Que se llene la *entrada* de un
@@ -129,14 +134,31 @@ en segundos.
 - Corazón, Guardia y Cauterizador: **nunca** tienen presión (son sumideros con válvula; si se saturan, el problema pasa
   al conducto anterior).
 
-**Pérdida de integridad por segundo:**
+**Tensión (lo que realmente hace daño).** Estar lleno **no basta** para dañarse. La presión **nace en una bomba
+bloqueada**, es decir, un sangrador, esporangio, digestor o matriz cuya salida pasa del 85 %: está produciendo y no puede
+sacarlo. Desde ahí, la **tensión** viaja aguas abajo por los vasos que también estén por encima del 85 % y se detiene en
+el primero que tiene sitio:
+
+- **Conducto:** pasa la tensión hacia su flecha.
+- **Cruce:** la pasa por cada carril lleno.
+- **Ganglio:** la pasa a todas sus salidas llenas (solo si él mismo está lleno y en tensión).
+
+Consecuencias:
+- Un callejón sin salida alimentado por un sangrador → tensión → revienta. ✔
+- Una línea que lleva más de lo que el siguiente tramo puede mover → tensión → revienta. ✔
+- Una **rama de desbordamiento** llena junto a un Ganglio que puede mandar el resto a otro sitio → **en reposo**, no se
+  daña. ✔ Esto permite diseños de «lo que sobre, que vaya allí», imposibles antes de la v0.2.
+
+En pantalla, solo las estructuras **en tensión** brillan en naranja-rojo. La capa **P** muestra el llenado de todas.
+
+**Pérdida de integridad por segundo** (solo con tensión; sin tensión, `p` cuenta como 0):
 ```
-exceso  = (p − 0,85) / 0,15                      si p > 0,85
+exceso  = (p − 0,85) / 0,15                      si p > 0,85 y en tensión
 pérdida = ( exceso² / 180  +  [r > 0,6] / 400 ) · (1 + 2r) · 0,85^Quitina · 1,15^profundidad
 ```
 - A presión 100 % sin podredumbre una estructura **revienta en 3 minutos**. Con podredumbre al 100 %, en 1 minuto.
 - Por encima de 0,6 de podredumbre se pierde integridad aunque no haya presión.
-- **Regeneración:** +1/300 por segundo (5 min de 0 a 100 %) si `p < 0,5` y nada la daña.
+- **Regeneración:** +1/300 por segundo (5 min de 0 a 100 %) si no está en tensión y nada la daña.
 
 **Rotura:**
 - La estructura desaparece **sin reembolso** y su contenido se derrama.
@@ -153,10 +175,10 @@ Cada casilla tiene una podredumbre `r` entre 0 y 1. Cada segundo:
 | Situación de la casilla | Variación local |
 |---|---|
 | Roca desnuda | −0,004 (**cortafuegos**) |
-| Estructura **con flujo** (presión < 50 % y sacando > 0,05/s) | −0,002 (el flujo la arrastra) |
+| Estructura **con flujo** (sacando > 0,05/s y sin tensión) | −0,002 (el flujo la arrastra) |
 | Estructura **estancada** (parada, sellada o atascada) | `+0,01 · r · (1 − r)` (crecimiento logístico) |
 | Guardia / Cauterizador | 0 (inertes) |
-| Presión > 85 % | +0,004 adicional |
+| En tensión | +0,004 adicional |
 | Todas | `+0,0015 · Σ_vecinos (r_vecino − r)` (difusión) |
 
 Además:
@@ -228,17 +250,52 @@ mutágeno = ⌊ (esencia del ciclo / 1.000.000)^0,35 · 1,2^profundidad ⌋     
 | 1B (10⁹) | 11 |
 | 1T (10¹²) | 125 |
 
-Al metamorfosear: caverna nueva (semilla nueva), esencia a 40, profundidad +1, se cierra el ciclo en las estadísticas.
-Se conservan el mutágeno, las mutaciones, los logros y todas las estadísticas totales.
+Al metamorfosear: caverna nueva (semilla nueva), esencia a 40 y se cierra el ciclo en las estadísticas. Se conservan el
+mutágeno, las mutaciones, los logros y todas las estadísticas totales.
 
-| Mutación | Efecto por nivel | Coste (mutágeno) | Máx. |
+### Descender o permanecer
+Al metamorfosear **eliges**:
+- **Descender** (+1 de profundidad): peligros ×1,15 (vida de sanguijuelas, daño a la integridad y entropía) y
+  mutágeno futuro ×1,2.
+- **Permanecer:** misma profundidad, mismo peligro y mismo rendimiento.
+
+Descender a ciegas lleva al colapso: en las pruebas, a partir de profundidad ~33 los peligros (×100 y más) superan a la
+Quitina y todo revienta. Lo sensato es bajar mientras los ciclos salen limpios y quedarse cuando empiezan las roturas.
+
+### Bonus del mutágeno sin gastar
+```
+bonus = 1 + 0,1 · m                      si m ≤ 100
+bonus = 11 · √(m / 100)                  si m > 100      (tope suave)
+```
+| Mutágeno sin gastar | 0 | 50 | 100 | 400 | 10.000 | 1.000.000 |
+|---|---|---|---|---|---|---|
+| Bonus | ×1 | ×6 | ×11 | ×22 | ×110 | ×1.100 |
+
+El tope suave existe porque, siendo lineal, el bonus realimentaba la esencia → mutágeno → bonus sin freno.
+
+### Mutaciones
+Coste: `base · crecimiento^nivel · rampa^(nivel(nivel−1)/2)`. La rampa hace que los niveles altos sean un objetivo a
+largo plazo.
+
+| Mutación | Efecto por nivel | base · crec. · rampa | Máx. |
 |---|---|---|---|
-| Hipertrofia | α += 0,05 | 1 · 3^nivel | 20 |
-| Memoria Vascular | caudal y capacidad de conductos/ganglios/cruces ×1,5 | 1 · 2,2^nivel | 30 |
-| Fecundidad | extracción ×1,4 | 1 · 2,5^nivel | 30 |
-| Catálisis | velocidad de procesadores ×1,35 | 2 · 2,5^nivel | 30 |
-| Quitina | pérdida de integridad ×0,85 | 1 · 2^nivel | 15 |
-| Garras | daño de golpe ×1,6 | 1 · 2^nivel | 25 |
+| Hipertrofia | α += 0,05 | 1 · 3 · 1,4 | 40 |
+| Memoria Vascular | caudal y capacidad de conductos/ganglios/cruces ×1,5 | 1 · 2,2 · 1,2 | 50 |
+| Fecundidad | extracción ×1,4 | 1 · 2,5 · 1,2 | 50 |
+| Catálisis | velocidad de procesadores ×1,35 | 2 · 2,5 · 1,2 | 50 |
+| Quitina | pérdida de integridad ×0,85 | 1 · 2 · 1,25 | 25 |
+| Garras | daño de golpe ×1,6 | 1 · 2 · 1,2 | 50 |
+
+Coste del nivel indicado (de ese nivel al siguiente):
+
+| Mutación | 0 | 1 | 2 | 3 | 4 | 5 | 7 | 10 | 15 | 20 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Hipertrofia | 1 | 3 | 12 | 74 | 609 | 7.028 | 2,56e6 | 2,22e11 | 3,16e22 | 2,03e37 |
+| Memoria Vascular | 1 | 2 | 5 | 18 | 69 | 319 | 11.475 | 9,71e6 | 2,82e13 | 7,81e21 |
+| Fecundidad | 1 | 2 | 7 | 27 | 116 | 604 | 28.079 | 3,49e7 | 1,92e14 | 1,01e23 |
+| Catálisis | 2 | 5 | 15 | 54 | 233 | 1.209 | 56.158 | 6,98e7 | 3,84e14 | 2,01e23 |
+| Quitina | 1 | 2 | 5 | 15 | 61 | 298 | 13.877 | 2,35e7 | 4,91e14 | 2,71e24 |
+| Garras | 1 | 2 | 4 | 13 | 47 | 198 | 5.888 | 3,75e6 | 6,75e12 | 1,16e21 |
 
 ---
 
@@ -251,8 +308,8 @@ Lista completa en [LOGROS.md](LOGROS.md).
 
 ## 11. Ritmo medido
 
-El script `npm run probe` juega con un bot «atento pero simple» (golpea, remienda, purifica y ahorra para el Corazón;
-**nunca** fabrica vitriolo):
+### Un ciclo (`npm run probe`)
+Un bot «atento pero simple» (golpea, remienda, purifica y ahorra para el Corazón; **nunca** fabrica vitriolo):
 
 ```
   5 min   ~100 E/s     Corazón nivel 1
@@ -262,3 +319,22 @@ El script `npm run probe` juega con un bot «atento pero simple» (golpea, remie
 ```
 
 Es un **suelo**, no un objetivo: un jugador que monte una línea de vitriolo debería superarlo por órdenes de magnitud.
+
+### Muchos ciclos (`npm run probe:deep -- 24`)
+Un bot más listo con la cadena completa (vitriolo incluido, con Cruce y Ganglios). Detecta el cuello de botella real,
+metamorfosea cuando su mutágeno por minuto deja de mejorar, desciende solo tras ciclos limpios y compra Hipertrofia
+primero. Juega 24 horas seguidas sin parar:
+
+| Ciclo | Hora aprox. | Profundidad | α | Pico E/s | Mutágeno del ciclo |
+|---|---|---|---|---|---|
+| 1 | 1 h | 0 | 1,00 | 1,2K | 1 |
+| 7 | 2 h | 6 | 1,10 | 9K | 3 |
+| 13 | 2,7 h | 12 | 1,15 | 3e5 | 35 |
+| 19 | 3,5 h | 18 | 1,25 | 1e8 | 841 |
+| 31 | 5 h | 30 | 1,35 | 2e14 | 5,8e5 |
+| 61 | 9 h | 35 | 1,40 | 4e15 | 7,7e6 |
+| 121 | 16 h | 35 | 1,45 | 1,6e18 | 3,2e7 |
+| 175 | 24 h | 36 | 1,45 | 3e16–1e19 | ~1e7–1e8 |
+
+La profundidad se estabiliza sola en torno a 35 y α sube despacio: los muros funcionan. Una persona jugará más despacio
+que un bot que actúa cada segundo durante 24 horas, así que en tiempo real esto equivale a semanas de juego.

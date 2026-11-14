@@ -12,6 +12,11 @@
 - **Cruce:** estructura nueva para que dos líneas se crucen sin mezclarse.
 - **Guardias y Cauterizadores en línea:** guardan una reserva y dejan pasar el resto. Antes, alimentarlos directamente
   acababa siempre reventando la línea.
+- **Tensión:** la presión solo daña cuando nace en un productor bloqueado. Las ramas de desbordamiento llenas ya no se
+  rompen.
+- **Equilibrado a largo plazo**, gracias a un bot de muchos ciclos (`npm run probe:deep`): rampa supraexponencial del
+  Corazón y de las mutaciones, tope suave del mutágeno sin gastar y profundidad elegible (Descender/Permanecer).
+- **Exportar estadísticas:** JSON completo, CSV de series temporales y CSV de ciclos.
 - Guardado v2 con migración automática desde v1.
 - Documentación completa en castellano (esta carpeta).
 
@@ -30,6 +35,5 @@
 4. **Presión como recurso:** que las líneas entre el 70 % y el 85 % de presión vayan ×1,5 más rápido, para que jugar al
    límite sea una decisión deliberada (techo de habilidad).
 5. **Segunda capa de prestigio:** «Esporulación», que permitiría llevarse un plano de construcción entre cavernas.
-6. **Exportar estadísticas** a CSV/JSON para analizarlas fuera del juego.
 7. **Web Worker** para el simulador si la rejilla crece.
 8. **Sonido:** latido del Corazón ligado a la producción, chasquidos al reventar.

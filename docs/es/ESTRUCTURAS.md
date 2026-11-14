@@ -39,7 +39,8 @@ baja y la siguiente sale más barata.
 
 ## Costes de mejora (por nivel)
 
-Fórmula: `máx(1, coste_base) · base_nivel · crecimiento_nivel^nivel_actual`
+Fórmula: `máx(1, coste_base) · base_nivel · crecimiento_nivel^nivel_actual`. El Corazón lleva además una rampa
+supraexponencial: `× 1,1^(t(t−1)/2)`. Sus siguientes niveles: 6→7 = 5,20e12, 7→8 = 4,15e14, 8→9 = 3,64e16.
 
 | Estructura | 0→1 | 1→2 | 2→3 | 3→4 | 4→5 | 5→6 |
 |---|---|---|---|---|---|---|
@@ -52,7 +53,7 @@ Fórmula: `máx(1, coste_base) · base_nivel · crecimiento_nivel^nivel_actual`
 | Matriz | 2.000 | 20.000 | 200.000 | 2,00e6 | 2,00e7 | 2,00e8 |
 | Guardia | 600 | 4.800 | 38.400 | 307.200 | 2,46e6 | 1,97e7 |
 | Cauterizador | 1.000 | 8.000 | 64.000 | 512.000 | 4,10e6 | 3,28e7 |
-| **Corazón** | 150 | 6.750 | 303.750 | 1,37e7 | 6,15e8 | 2,77e10 |
+| **Corazón** | 150 | 6.750 | 334.125 | 1,82e7 | 1,09e9 | 7,18e10 |
 
 ---
 
@@ -82,6 +83,8 @@ Fórmula: `máx(1, coste_base) · base_nivel · crecimiento_nivel^nivel_actual`
   puede aceptar, lo que sobra se reparte entre los demás.
 - Admite mezcla de fluidos, pero ojo: si el vecino es un conducto con otro fluido, no aceptará.
 - Uso típico: partir una línea de icor entre el Corazón y un Digestor, o desviar esporas hacia una Guardia.
+- **Ramas de desbordamiento:** si una salida del Ganglio se llena (por ejemplo, la rama que va a una Matriz más lenta), el
+  Ganglio manda el resto a las demás. Esa rama llena queda **en reposo**, sin tensión, y no se daña.
 
 ### Cruce
 - Lo que entra por un lado **sale por el opuesto**. Tiene cuatro carriles independientes de un fluido cada uno.
@@ -91,8 +94,8 @@ Fórmula: `máx(1, coste_base) · base_nivel · crecimiento_nivel^nivel_actual`
 ### Digestor
 - Receta: **2 icor → 1 bilis**. A nivel 0 hace 0,5 transmutaciones/s, es decir, **come 1 icor/s y saca 0,5 bilis/s**.
 - Solo acepta icor (hasta 8 · 2^nivel).
-- Si no puede sacar la bilis, su salida se llena y **revienta**. Si le entra más icor del que come, el atasco sube por el
-  conducto de entrada.
+- Si no puede sacar la bilis, su salida se llena, entra en **tensión** y revienta. Si le entra más icor del que come, la
+  tensión aparece en el sangrador que lo alimenta y sube por el conducto de entrada.
 
 ### Matriz Catalítica
 - Receta: **1 bilis + 2 esporas → 1 vitriolo**. A nivel 0: 0,25/s (come 0,25 bilis + 0,5 esporas, saca 0,25 vitriolo).

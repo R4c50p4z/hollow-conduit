@@ -10,6 +10,7 @@ El panel se abre con el botón **▤** del HUD. Tiene seis pestañas:
 | **Gráficas** | Series temporales de la última hora del ciclo, con vista de tabla | `stats.history`, una muestra cada 10 s y 360 como máximo. |
 | **Ciclos** | Tabla con cada ciclo terminado | `stats.runs`, los últimos 100. |
 | **Logros** | Los 32 logros, cuáles tienes y el bonus total | `achievements`. |
+| **Exportar** | Descarga o comparte tus datos | Ver «Exportar» al final |
 
 > Todos los contadores son **sumas exactas** que el motor actualiza en el momento en que ocurre cada cosa (no son
 > estimaciones). Un test comprueba que `producido = consumido + en tránsito` cuadra al céntimo en una red sin pérdidas.
@@ -44,7 +45,7 @@ Una barra que muestra **qué parte del logaritmo de tu producción aporta cada r
 |---|---|
 | **Estructuras** | Total (sin el Corazón), desglosado por tipo con la **suma de niveles** de ese tipo |
 | **Nivel más alto** | La estructura más mejorada |
-| **Con flujo** | Estructuras que están moviendo fluido sanamente (presión < 50 % y salida > 0,05/s). **Estas se autolimpian de podredumbre.** |
+| **Con flujo** | Estructuras que están moviendo fluido sanamente (salida > 0,05/s y sin tensión). **Estas se autolimpian de podredumbre.** |
 | **Estancadas** | El resto: paradas, selladas, atascadas o sin entrada. **Aquí crece la podredumbre.** |
 | **Selladas** | Apagadas a mano |
 | **Vetas explotadas / Lechos usados** | Cuántos de los recursos del mapa estás aprovechando |
@@ -57,7 +58,7 @@ Una barra que muestra **qué parte del logaritmo de tu producción aporta cada r
 | Estadística | Qué es |
 |---|---|
 | **Presión media / máxima** | Media y pico de llenado de los vasos y productores |
-| **Sobrepresionadas** | Cuántas estructuras pasan del 85 % (están perdiendo integridad ahora mismo) |
+| **Sobrepresionadas** | Cuántas estructuras están **en tensión** (llenas y empujadas por una bomba bloqueada). Son las que están perdiendo integridad ahora mismo. |
 | **Integridad media / estructura más débil** | — |
 | **Agrietadas** | Integridad < 50 % |
 | **Podredumbre media / peor** | Sobre todas las casillas del mapa |
@@ -65,7 +66,7 @@ Una barra que muestra **qué parte del logaritmo de tu producción aporta cada r
 | **Podredumbre grave** | r > 50 % (ahí no se puede construir) |
 
 ### Peores cuellos de botella
-Las 5 estructuras con **más presión**, con sus coordenadas `(columna, fila)` contando desde 1 en la esquina superior
+Las 5 estructuras **en tensión** con más presión, con sus coordenadas `(columna, fila)` contando desde 1 en la esquina superior
 izquierda. **El cuello de botella real suele estar justo después del último de la lista**, siguiendo el flujo: es lo que
 no da abasto.
 
@@ -123,7 +124,7 @@ Construidas (con desglose por tipo), mejoras, arrasadas, remiendos, purgas, puri
 | Estadística | Qué cuenta |
 |---|---|
 | **Roturas** | Total, desglosado **por causa** (presión / podredumbre / sanguijuelas) y **por tipo** de estructura |
-| **Tiempo-estructura sobrepresionado** | Suma, para cada estructura, del tiempo que pasó por encima del 85 %. Dos estructuras sobrepresionadas durante 1 minuto suman 2 minutos. |
+| **Tiempo-estructura sobrepresionado** | Suma, para cada estructura, del tiempo que pasó en tensión. Dos estructuras sobrepresionadas durante 1 minuto suman 2 minutos. |
 | **Tiempo-casilla en podredumbre grave** | Lo mismo para casillas con r > 50 % |
 | **Podredumbre purificada a mano / arrasada por cauterizadores / arrastrada por el flujo** | Cantidad total eliminada por cada vía, en «casillas completas» (1,0 = una casilla del 100 % al 0 %) |
 | **Semillas de entropía** | Veces que la entropía sembró podredumbre |
@@ -168,6 +169,20 @@ del ciclo**, mutágeno obtenido, roturas y sanguijuelas abatidas. La más recien
 > de prestigio. Ciclos más cortos con más mutágeno por minuto suelen ser la mejor estrategia una vez tienes Hipertrofia.
 
 ---
+
+## Exportar
+
+En la última pestaña puedes sacar tus datos del juego:
+
+| Botón | Archivo | Contenido |
+|---|---|---|
+| Todas las estadísticas | `hollow-stats-FECHA.json` | Todo: contadores del ciclo y totales, récords, foto en directo, ciclos, mutaciones y logros |
+| Series temporales | `hollow-series-FECHA.csv` | Una fila por muestra de 10 s: `t_s, rate_log10, essence_log10, intake_ichor…, rot_avg, pressure_avg, integrity_avg, leeches, structures` |
+| Ciclos | `hollow-cycles-FECHA.csv` | Una fila por ciclo terminado |
+
+En el iPhone se abre el menú de compartir (guardar en Archivos, AirDrop, Numbers…). En el navegador se descarga, y si no
+se puede, se copia al portapapeles. Los CSV usan punto decimal y coma como separador, el formato estándar que abren
+Excel, Numbers y Google Sheets.
 
 ## Muestras guardadas y privacidad
 

@@ -96,6 +96,11 @@ podredumbre de la casilla) y **Arrasar** (demoler; recuperas el 50 % de lo inver
 - **Tócala para golpearla** (1 de daño por toque). Al principio tienen ~4 de vida.
 - Si no la matas, chupa el contenido, roe la integridad y deja podredumbre. A los 45 s de comer se marcha saciada.
 
+### Regla de oro de las ramas
+**No tiendas una rama hasta tener su destino.** Una rama que acaba en nada se llena, entra en tensión y revienta. En
+las pruebas, el bot que construía las ramas hacia la Matriz antes de poder pagarla se gastaba toda la esencia en
+remiendos.
+
 ### Minuto 15–30: defensa y escalado
 - Las sanguijuelas se hacen más fuertes cuanto más produces. Hacia los 15–20 minutos los toques no bastan: construye
   una **Guardia de Espinas** cerca de las madrigueras y pásale esporas. Funciona **en línea**: guarda 4 esporas de
@@ -113,9 +118,10 @@ Se ilumina **Metamorfosis**. Puedes reiniciar la caverna a cambio de **mutágeno
 ## Los tres peligros, y cómo sobrevivir a cada uno
 
 ### 1. Presión (atascos)
-**Síntoma:** brillo naranja-rojo pulsante sobre una estructura y grietas que aparecen.
-**Causa:** algo de más adelante no da abasto: un conducto lento, un procesador lento, un Corazón saturado o un callejón
-sin salida.
+**Síntoma:** brillo naranja-rojo pulsante sobre una estructura y grietas que aparecen. Eso es **tensión**.
+**Causa:** un productor no puede sacar lo que produce porque algo de más adelante no da abasto: un conducto lento, un
+procesador lento, un Corazón saturado o un callejón sin salida. Estar lleno sin más **no** daña: una rama llena junto a
+un Ganglio que puede mandar el resto a otro sitio está en reposo y es segura.
 **Solución:** pon la capa **P**, sigue la línea hasta el primer punto que **no** está lleno (ahí está el cuello de
 botella) y mejóralo o reparte el flujo con un Ganglio. En una emergencia, **Sella** el productor o **Purga** el tramo.
 
@@ -141,7 +147,8 @@ Cuando en un ciclo hayas producido **1M de esencia**, puedes metamorfosear:
 
 - **Pierdes:** toda la caverna, las estructuras y la esencia. Empiezas en una caverna **nueva** con 40 de esencia.
 - **Ganas:** mutágeno = ⌊(esencia del ciclo / 1M)^0,35 × 1,2^profundidad⌋. Con 1M sacas 1, con 100M unos 5 y con 1B unos 11.
-- **Profundidad +1:** peligros ×1,15 y mutágeno ×1,2 en cada nivel.
+- **Eliges:** **Descender** (+1 de profundidad: peligros ×1,15 y mutágeno futuro ×1,2) o **Permanecer** en la misma
+  profundidad. Baja mientras tus ciclos salgan limpios; quédate cuando empiecen a reventar cosas.
 
 El mutágeno se gasta en **mutaciones permanentes**. Las más importantes:
 
@@ -154,8 +161,8 @@ El mutágeno se gasta en **mutaciones permanentes**. Las más importantes:
 | Quitina | Tus estructuras aguantan más presión y podredumbre. |
 | Garras | Tus golpes hacen más daño. |
 
-> 💡 **El mutágeno sin gastar también rinde:** cada punto guardado da +10 % de esencia. Decidir si gastarlo o guardarlo es
-> parte de la estrategia.
+> 💡 **El mutágeno sin gastar también rinde:** cada punto guardado da +10 % de esencia hasta 100 puntos (×11), y a partir
+> de ahí crece con la raíz cuadrada. Decidir si gastarlo o guardarlo es parte de la estrategia.
 
 ---
 

@@ -19,6 +19,9 @@ A partir de ahí, **cada vez que se suba un cambio a esa rama, Netlify publica l
 > **Alternativas.** **Cloudflare Pages** también es gratis con repos privados: comando de compilación `npm run build`,
 > carpeta `dist`. Si algún día haces público el repo, **GitHub Pages** ya está configurado
 > (`.github/workflows/pages.yml`); solo hay que activar *Settings → Pages → Source: GitHub Actions*.
+>
+> Mientras el repo sea privado, ese flujo de GitHub solo **compila y pasa los tests** en cada cambio (verás un ✓ verde en
+> GitHub), y se salta la publicación. Es normal.
 
 ## 2. Instalarlo en el iPhone
 

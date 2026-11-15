@@ -1,7 +1,8 @@
-# Publishes the game to GitHub Pages on every push.
-# Requires a public repo (or a paid GitHub plan for private repos) and
-# Settings → Pages → Source: "GitHub Actions" enabled once.
-name: Deploy to GitHub Pages
+# On every push: run the tests and build (CI).
+# Publishing to GitHub Pages only runs when the repo is public, because Pages for
+# private repos needs a paid GitHub plan. If you make the repo public, also enable
+# Settings → Pages → Source: "GitHub Actions" once. (Private repo? Use Netlify: netlify.toml.)
+name: CI and GitHub Pages
 
 on:
   push:
@@ -34,6 +35,7 @@ jobs:
           path: dist
   deploy:
     needs: build
+    if: ${{ !github.event.repository.private }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages

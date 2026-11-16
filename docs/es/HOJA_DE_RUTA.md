@@ -2,6 +2,14 @@
 
 ## Registro de cambios
 
+### v0.5: lecciones de Mindustry (prioridad 1)
+- **Ganglio con modo prioridad** (compuerta de desbordamiento): todo por el lado al que apunta y el sobrante a los demás.
+  Resuelve la trampa Digestor → una sola Matriz.
+- **Estado de cada pieza:** punto de color en la caverna y motivo exacto en la ficha (sin salida, otro fluido, lleno,
+  le falta…).
+- **«¿Aguanta sin mí?»:** simulación de 30 min con sanguijuelas sobre una copia de la partida, con veredicto.
+- Informe completo en `reports/Mindustry lecciones de diseño logístico.md`. Siguiente: prioridad 2 de ese informe.
+
 ### v0.4: periodo de gracia y tutorial
 - **Periodo de gracia:** sin sanguijuelas durante los primeros 2 días de juego (cuenta el tiempo total, también con la
   app cerrada, y sobrevive a la metamorfosis). El HUD muestra lo que queda y se puede terminar antes en ⚙ Ajustes. Los

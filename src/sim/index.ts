@@ -7,3 +7,4 @@ export { createState, resetRun, tileAt, idx } from './world';
 export { serialize, deserialize } from './save';
 export { snapshot, stabilityOf, STABLE_WINDOW, type Snapshot } from './stats';
 export { ACHIEVEMENTS, achievementMult } from './achievements';
+export { statusOf, forecast, type Status, type StatusCode, type BlockReason, type Forecast } from './status';

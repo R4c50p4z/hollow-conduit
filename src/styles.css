@@ -268,3 +268,11 @@ th:first-child, td:first-child { text-align: left; }
 }
 /* Big enough to hit with a thumb (Apple HIG: 44pt). */
 .x { min-width: 44px; min-height: 44px; display: inline-grid; place-items: center; font-size: 18px; margin: -8px -10px 0 0; }
+.status-line { display: flex; align-items: center; gap: 6px; margin: 2px 0 4px; font-size: 12px; color: var(--bone); }
+.status-line i { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
+.forecast { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.forecast .act { min-height: 44px; }
+.fc-result { border: 1px solid var(--edge); padding: 8px 10px; font-size: 13px; }
+.fc-result.ok b { color: var(--essence); font-weight: normal; }
+.fc-result.warn b { color: #ff9a5c; font-weight: normal; }
+.fc-result ul { margin: 4px 0 0; padding-left: 18px; font-size: 12px; line-height: 1.5; }

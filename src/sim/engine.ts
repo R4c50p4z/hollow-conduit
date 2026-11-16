@@ -211,6 +211,14 @@ function transfer(s: SimState, dt: number, pushed: Float64Array) {
         b.rr = (b.rr + 1) % 4;
         if (!outs.length) break;
         let budget = F.conduitThroughput('router', b.tier, t.rot, m) * dt;
+        // Priority mode: the facing side gets first claim on the whole budget (overflow gate).
+        if (b.mode === 'priority' && outs.includes(b.dir)) {
+          const got = pushBuf(s, b.store, budget, x + DX[b.dir], y + DY[b.dir], opposite(b.dir));
+          budget -= got;
+          pushed[i] += got;
+          outs.splice(outs.indexOf(b.dir), 1);
+          if (!outs.length) break;
+        }
         // Two passes: even split first, then let leftovers flow to whoever still has room.
         for (let pass = 0; pass < 2 && budget > 1e-12; pass++) {
           const share = budget / outs.length;

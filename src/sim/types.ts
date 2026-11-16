@@ -57,6 +57,12 @@ export interface Building {
   flowEma: number;
   /** Round-robin cursor for routers. */
   rr: number;
+  /**
+   * Ganglion only. 'split': even split between all outputs (default).
+   * 'priority': everything goes out of the facing side first; only what it can't take spills to
+   * the others (Mindustry's overflow gate).
+   */
+  mode?: 'split' | 'priority';
   /** Total essence spent on this building (for refunds/repair pricing). */
   invested: Decimal;
   /** Last computed fill fraction 0..1 (pressure). */
@@ -263,7 +269,8 @@ export type Command =
   | { t: 'strike'; x: number; y: number }
   | { t: 'mutate'; id: MutationId }
   | { t: 'metamorphose'; /** Go one depth deeper (default) or stay at the current depth. */ descend?: boolean }
-  | { t: 'endGrace' };
+  | { t: 'endGrace' }
+  | { t: 'setMode'; x: number; y: number };
 
 export type ReasonCode =
   | 'outOfBounds'

@@ -83,6 +83,11 @@ supraexponencial: `× 1,1^(t(t−1)/2)`. Sus siguientes niveles: 6→7 = 5,20e12
   puede aceptar, lo que sobra se reparte entre los demás.
 - Admite mezcla de fluidos, pero ojo: si el vecino es un conducto con otro fluido, no aceptará.
 - Uso típico: partir una línea de icor entre el Corazón y un Digestor, o desviar esporas hacia una Guardia.
+- **Modo prioridad** (botón en su ficha): todo sale primero por el lado al que apunta (se elige girándolo) y solo lo
+  que ese lado no acepta se reparte entre los demás. Es la «compuerta de desbordamiento» (overflow gate) de Mindustry.
+  Una flecha clara en el Ganglio indica el lado prioritario.
+  - Caso típico: un Digestor produce 0,5 bilis/s y una Matriz solo gasta 0,25. Con un Ganglio en prioridad hacia la
+    Matriz, ella se alimenta primero y el sobrante va al Corazón, sin tensión.
 - **Ramas de desbordamiento:** si una salida del Ganglio se llena (por ejemplo, la rama que va a una Matriz más lenta), el
   Ganglio manda el resto a las demás. Esa rama llena queda **en reposo**, sin tensión, y no se daña.
 

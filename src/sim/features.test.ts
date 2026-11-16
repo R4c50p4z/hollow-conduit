@@ -346,3 +346,86 @@ describe('grace period', async () => {
     expect(r.extrapolated).toBeCloseTo(3600, -1);
   });
 });
+
+describe('ganglion priority mode', () => {
+  it('sends everything out of the facing side first and only spills the surplus', () => {
+    const s = lab();
+    // tap → ganglion; north (facing) to a slow consumer branch, east to the Heart line.
+    const hx = s.heartX, hy = s.heartY;
+    put(s, hx - 2, hy - 2, 'tap', 1);
+    put(s, hx - 1, hy - 2, 'conduit', 1);
+    const g = put(s, hx, hy - 2, 'router', 0); // facing north
+    put(s, hx, hy - 1, 'conduit', 2); // south → Heart
+    const north = put(s, hx, hy - 3, 'conduit', 0); // north → dead-end branch of 12 capacity
+    expect(applyCommand(s, { t: 'setMode', x: hx, y: hy - 2 })).toEqual({ ok: true });
+    expect(g.mode).toBe('priority');
+    simulate(s, 5);
+    // Early on, all ichor goes north (priority) and nothing reaches the Heart yet.
+    expect(north.store[0]).toBeGreaterThan(3);
+    expect(s.stats.run.consumed[0]).toBe(0);
+    simulate(s, 60);
+    // Once the priority branch is full, the surplus spills south to the Heart; nothing strains.
+    expect(north.pressure).toBeGreaterThan(0.95);
+    expect(s.intake[0]).toBeGreaterThan(0.8);
+    expect(s.tiles.some((t) => t.building?.strained)).toBe(false);
+  });
+
+  it('fixes the Digester → single Womb trap: surplus bile overflows to the Heart', () => {
+    const s = lab();
+    s.depth = 0;
+    // Bile is made at 0.5/s; one Womb eats 0.25/s. Priority ganglion: Womb first, rest to Heart.
+    const hx = s.heartX, hy = s.heartY; // Heart at (4,10)
+    put(s, 0, 6, 'tap', 1);
+    put(s, 1, 6, 'digester', 1);
+    put(s, 2, 6, 'conduit', 1);
+    const g = put(s, 3, 6, 'router', 0); // facing north → Womb branch
+    applyCommand(s, { t: 'setMode', x: 3, y: 6 });
+    put(s, 3, 5, 'conduit', 0);
+    put(s, 3, 4, 'reactor', 1); // womb gets bile from the south
+    put(s, 2, 4, 'sporangium', 1); // and spores from the west
+    put(s, 4, 4, 'conduit', 2);
+    for (let y = 5; y < hy; y++) if (y !== 6) put(s, 4, y, 'conduit', 2);
+    put(s, 4, 6, 'junction', 0); // ganglion's east output crosses the vitriol line
+    put(s, 5, 6, 'conduit', 2);
+    for (let y = 7; y < hy; y++) put(s, 5, y, 'conduit', 2);
+    put(s, 5, hy, 'conduit', 3);
+    void g; void hx;
+    simulate(s, 600);
+    expect(s.stats.run.ruptures).toBe(0);
+    expect(s.intake[3]).toBeGreaterThan(0.2); // vitriol flowing
+    expect(s.intake[2]).toBeGreaterThan(0.15); // surplus bile reached the Heart
+  });
+});
+
+describe('diagnosis and forecast', async () => {
+  const { statusOf, forecast } = await import('./status');
+  it('explains why things are stuck', () => {
+    const s = lab();
+    put(s, 2, 2, 'tap', 1); // pushes east into nothing
+    put(s, 2, 5, 'digester', 2); // no input
+    const ichorPipe = put(s, 5, 4, 'conduit', 2); // dead end, pre-filled with ichor
+    ichorPipe.store[0] = 12;
+    put(s, 6, 4, 'sporangium', 3); // pushes spores west into that ichor-filled conduit
+    simulate(s, 30);
+    expect(statusOf(s, 2, 2)).toEqual({ code: 'blocked', reason: 'deadEnd' });
+    expect(statusOf(s, 2, 5)).toEqual({ code: 'noInput', missing: [0] });
+    expect(statusOf(s, 6, 4)?.reason).toBe('wrongFluid');
+  });
+
+  it('forecast runs on a clone with leeches on and leaves the real game untouched', () => {
+    const s = createState(11); // in grace, real burrows
+    const hx = s.heartX, hy = s.heartY;
+    s.essence = new Decimal(1e9);
+    for (const t of s.tiles) if (t.building?.kind !== 'heart') t.building = null;
+    s.tiles[idx(s, hx, hy - 3)].terrain = 'vein';
+    applyCommand(s, { t: 'build', x: hx, y: hy - 3, kind: 'tap', dir: 2 });
+    applyCommand(s, { t: 'build', x: hx, y: hy - 2, kind: 'conduit', dir: 2 });
+    applyCommand(s, { t: 'build', x: hx, y: hy - 1, kind: 'conduit', dir: 2 });
+    const before = serialize(s);
+    const f = forecast(s, 1800, 0.5, tick);
+    expect(serialize(s)).toBe(before); // real state untouched
+    expect(f.waves).toBeGreaterThan(0); // leeches were tested despite grace
+    expect(f.stable).toBe(false); // undefended: leeches eat it
+    expect(f.ruptures).toBeGreaterThan(0);
+  });
+});

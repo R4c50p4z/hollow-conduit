@@ -4,10 +4,10 @@ import { host } from '../game/host';
 import { useUI } from '../game/store';
 import { useT } from '../i18n';
 import { kindBlurb, kindName, reasonText, resName, terrainName } from '../i18n/game';
-import { cleanseCost, contentsOf, Formulas as F, repairCost, upgradeCost, type Command } from '../sim';
+import { cleanseCost, contentsOf, Formulas as F, repairCost, statusOf, upgradeCost, type Command } from '../sim';
 import { REFUND_FRACTION } from '../sim/config';
 import { fmt, fmtDuration, int, num } from './format';
-import { RES_COLOR } from './palette';
+import { RES_COLOR, STATUS_COLOR } from './palette';
 
 const Bar = ({ v, color, label }: { v: number; color: string; label: string }) => (
   <div className="stat">
@@ -30,6 +30,24 @@ function Btn({ onPress, children, cost, poor, danger }: { onPress: () => void; c
       {children}
       {cost && <small>{fmt(cost)}</small>}
     </button>
+  );
+}
+
+const ARROWS = ['↑', '→', '↓', '←'];
+
+/** "● Blocked: nothing ahead": colour + words, so it never relies on colour alone. */
+function StatusLine({ x, y }: { x: number; y: number }) {
+  const t = useT();
+  const st = statusOf(host.state, x, y);
+  if (!st) return null;
+  let text = t(`status.${st.code}`);
+  if (st.reason) text += ': ' + t(`status.reason.${st.reason}`);
+  if (st.missing?.length) text += ': ' + st.missing.map((r) => resName(r)).join(', ');
+  return (
+    <p className="status-line">
+      <i style={{ background: STATUS_COLOR[st.code] }} />
+      {text}
+    </p>
   );
 }
 
@@ -72,6 +90,7 @@ export function Inspector({ x, y }: { x: number; y: number }) {
         </button>
       </div>
 
+      {b && <StatusLine x={x} y={y} />}
       {b && !isHeart && (
         <>
           <Bar v={b.integrity} color={b.integrity < 0.3 ? '#ff3b3b' : '#d9cfbf'} label={t('insp.integrity')} />
@@ -102,6 +121,11 @@ export function Inspector({ x, y }: { x: number; y: number }) {
         {b && !isHeart && b.integrity < 0.999 && (
           <Btn {...act({ t: 'repair', x, y }, repairCost(s, x, y))}>
             {t('insp.mend')}
+          </Btn>
+        )}
+        {b?.kind === 'router' && (
+          <Btn {...act({ t: 'setMode', x, y })}>
+            {b.mode === 'priority' ? t('insp.modePriority', { dir: ARROWS[b.dir] }) : t('insp.modeSplit')}
           </Btn>
         )}
         {b && !isHeart && <Btn {...act({ t: 'toggle', x, y })}>{b.enabled ? t('insp.seal') : t('insp.unseal')}</Btn>}

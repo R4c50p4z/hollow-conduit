@@ -20,6 +20,17 @@ export const P = {
 
 export const RES_COLOR = [P.ichor, P.spore, P.bile, P.vitriol] as const;
 
+/** Status lights (always paired with a text label in the inspector, never colour alone). */
+export const STATUS_COLOR: Record<string, string> = {
+  working: '#7fbf6a',
+  blocked: '#e8902e',
+  noInput: '#e0465a',
+  strained: '#ff5a2b',
+  resting: '#c9a24a',
+  idle: '#6b5f52',
+  sealed: '#8a7a63',
+};
+
 /**
  * Chart variants of the resource colours, validated with the dataviz palette checker on the
  * panel surface (#120e0b, dark): lightness band, chroma floor, ≥3:1 contrast and adjacent-pair

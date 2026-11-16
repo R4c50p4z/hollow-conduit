@@ -1,7 +1,7 @@
-import { DX, DY, opposite, type Building, type Dir, type SimState } from '../sim';
+import { DX, DY, opposite, statusOf, type Building, type Dir, type SimState } from '../sim';
 import { CAUTERIZER_RADIUS, PRESSURE_SAFE, WARD_RADIUS } from '../sim/config';
 import type { Overlay } from '../game/store';
-import { P, RES_COLOR } from './palette';
+import { P, RES_COLOR, STATUS_COLOR } from './palette';
 
 export interface Layout {
   T: number; // tile px (CSS)
@@ -241,6 +241,19 @@ function drawBuilding(g: CanvasRenderingContext2D, s: SimState, x: number, y: nu
         g.arc(cx, cy, T * 0.14, 0, Math.PI * 2);
         g.fill();
         g.globalAlpha = 1;
+        if (b.mode === 'priority') {
+          // Priority ganglion: a bright arrow toward the side that gets first claim.
+          const px = -DY[b.dir], py = DX[b.dir];
+          const tipX = cx + DX[b.dir] * T * 0.36, tipY = cy + DY[b.dir] * T * 0.36;
+          const baseX = cx + DX[b.dir] * T * 0.16, baseY = cy + DY[b.dir] * T * 0.16;
+          g.fillStyle = P.essence;
+          g.beginPath();
+          g.moveTo(tipX, tipY);
+          g.lineTo(baseX + px * T * 0.12, baseY + py * T * 0.12);
+          g.lineTo(baseX - px * T * 0.12, baseY - py * T * 0.12);
+          g.closePath();
+          g.fill();
+        }
       }
       break;
     }
@@ -402,6 +415,21 @@ function drawBuilding(g: CanvasRenderingContext2D, s: SimState, x: number, y: nu
     }
   }
 
+  // Status light (Mindustry-style) on producers, processors and defences: the inspector says why.
+  if (b.kind === 'tap' || b.kind === 'sporangium' || b.kind === 'digester' || b.kind === 'reactor' || b.kind === 'ward' || b.kind === 'cauterizer') {
+    const st = statusOf(s, x, y);
+    if (st && st.code !== 'working') {
+      const dx = L.ox + (x + 1) * T - T * 0.16, dy = L.oy + y * T + T * 0.16;
+      g.fillStyle = P.ink;
+      g.beginPath();
+      g.arc(dx, dy, T * 0.1, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = STATUS_COLOR[st.code];
+      g.beginPath();
+      g.arc(dx, dy, T * 0.07, 0, Math.PI * 2);
+      g.fill();
+    }
+  }
   // Tier pips
   if (b.tier > 0) {
     g.fillStyle = P.bone;

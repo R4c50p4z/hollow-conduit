@@ -170,6 +170,18 @@ tiempo:
 - Un productor que no puede sacar su producción **se queda quieto** sin dañarse. Lo que revienta son los conductos
   forzados (callejones sin salida y cuellos de botella).
 
+### Saber qué le pasa a cada pieza
+- Los productores, procesadores y defensas muestran un **punto de color** en la esquina cuando algo va mal:
+  **naranja** = bloqueado (no puede sacar lo que produce), **rojo** = le falta algo, **sepia** = sellado.
+- Toca la pieza y su ficha te dice **el motivo exacto**: «Bloqueado: delante no hay nada», «delante hay otro fluido»,
+  «lo de delante está lleno», «Le falta: esporas», «Lleno en reposo (seguro)»…
+
+### ¿Aguanta sin mí?
+En **▤ → Ahora → Estabilidad** está el botón **«¿Aguanta sin mí? Simular 30 min»**. Copia tu caverna y la deja correr
+30 minutos sin tocar nada y **con sanguijuelas** (aunque estés en el periodo de gracia, para probar tus defensas). Te dice
+si aguanta o qué fallaría: roturas por causa, sanguijuelas que escapan, piezas en tensión y cómo cambia tu producción.
+**No toca tu partida.**
+
 ### El indicador ✓ Estable
 En el HUD verás **✓ Estable** o **⚠ n**. Está estable cuando se cumplen las cuatro condiciones:
 1. 0 estructuras en tensión.

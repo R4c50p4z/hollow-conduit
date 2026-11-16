@@ -5,7 +5,7 @@ import { host } from '../game/host';
 import { useUI } from '../game/store';
 import { useT } from '../i18n';
 import { achDesc, achName, kindName, resName } from '../i18n/game';
-import { ACHIEVEMENTS, ALL_KINDS, snapshot, STABLE_WINDOW, type Counters, type Kind } from '../sim';
+import { ACHIEVEMENTS, ALL_KINDS, forecast, snapshot, STABLE_WINDOW, tick, type Counters, type Forecast, type Kind } from '../sim';
 import { ACHIEVEMENT_BONUS, ROT_TIPPING } from '../sim/config';
 import { LineChart, ShareBar } from './Chart';
 import { fmt, fmtDuration, fmtTime, int, num, pct } from './format';
@@ -94,6 +94,7 @@ function NowTab() {
         <Row k={mark(st.infected === 0) + t('st.stab.infected', { p: pct(ROT_TIPPING) })} v={int(st.infected)} />
         <Row k={mark(st.sinceRupture >= STABLE_WINDOW) + t('st.stab.rupture')} v={since(st.sinceRupture, s.stats.lastRuptureAt)} />
         <Row k={mark(st.sinceSated >= STABLE_WINDOW) + t('st.stab.sated')} v={since(st.sinceSated, s.stats.lastSatedAt)} />
+        <ForecastBox />
       </Sec>
       <Sec title={t('st.sec.heart')}>
         <Row k={t('st.rate')} v={fmt(s.rate)} />
@@ -422,6 +423,44 @@ function ExportTab() {
       <button className="act" onClick={() => go(`hollow-cycles-${stamp}.csv`, 'text/csv', cyclesCsv(s))}>
         {t('st.export.cycles')}
       </button>
+    </div>
+  );
+}
+
+/** "Will it hold without me?": runs a 30-min forecast on a clone and shows the verdict. */
+function ForecastBox() {
+  const t = useT();
+  const [busy, setBusy] = useState(false);
+  const [f, setF] = useState<Forecast | null>(null);
+  const run = () => {
+    setBusy(true);
+    setF(null);
+    // Let the "Simulating…" label paint before the (sub-second) synchronous run.
+    setTimeout(() => {
+      setF(forecast(host.state, 1800, 0.5, tick));
+      setBusy(false);
+    }, 30);
+  };
+  const e = (l: number) => fmt(Decimal.pow(10, l).sub(1));
+  return (
+    <div className="forecast">
+      <button className="act" disabled={busy} onClick={run}>
+        {busy ? t('fc.running') : t('fc.button')}
+      </button>
+      {!f && !busy && <p className="sub">{t('fc.note')}</p>}
+      {f && (
+        <div className={`fc-result ${f.stable ? 'ok' : 'warn'}`}>
+          <b>{f.stable ? t('fc.ok') : t('fc.bad')}</b>
+          <ul>
+            {f.ruptures > 0 && <li>{t('fc.ruptures', { n: f.ruptures, p: f.byCause.pressure, r: f.byCause.rot, l: f.byCause.leech })}</li>}
+            {f.leechesSated > 0 && <li>{t('fc.sated', { n: f.leechesSated })}</li>}
+            {f.strainedEnd > 0 && <li>{t('fc.strained', { n: f.strainedEnd })}</li>}
+            {f.infectedEnd > 0 && <li>{t('fc.infected', { n: f.infectedEnd })}</li>}
+            <li>{t('fc.rate', { a: e(f.rateStart), b: e(f.rateEnd) })}</li>
+            <li>{t('fc.waves', { w: f.waves, k: f.leechesKilled })}</li>
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

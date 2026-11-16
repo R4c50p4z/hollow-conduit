@@ -132,6 +132,12 @@ export function applyCommand(s: SimState, cmd: Command): CommandResult {
       t.rot = 0;
       return OK;
     }
+    case 'setMode': {
+      const b = tileAt(s, cmd.x, cmd.y)?.building;
+      if (!b || b.kind !== 'router') return fail('nothingThere');
+      b.mode = b.mode === 'priority' ? 'split' : 'priority';
+      return OK;
+    }
     case 'toggle': {
       const b = tileAt(s, cmd.x, cmd.y)?.building;
       if (!b || b.kind === 'heart') return fail('nothingThere');

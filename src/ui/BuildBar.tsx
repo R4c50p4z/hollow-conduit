@@ -46,7 +46,7 @@ export function BuildBar() {
         <button className="sq" aria-label={t('settings.title')} onClick={() => set({ panel: 'settings' })}>
           ⚙
         </button>
-        <button className="sq" aria-label="?" onClick={() => set({ panel: 'help' })}>
+        <button className="sq" aria-label="?" onClick={() => set({ panel: 'tutorial' })}>
           ?
         </button>
       </div>

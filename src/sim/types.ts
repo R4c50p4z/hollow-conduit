@@ -244,6 +244,8 @@ export interface SimState {
   depth: number;
   totalEssence: Decimal;
   achievements: string[];
+  /** Lifetime seconds until which no leeches attack (undefined → GRACE_SECONDS). */
+  graceUntil?: number;
 
   stats: Stats;
   events: GameEvent[];
@@ -260,7 +262,8 @@ export type Command =
   | { t: 'toggle'; x: number; y: number }
   | { t: 'strike'; x: number; y: number }
   | { t: 'mutate'; id: MutationId }
-  | { t: 'metamorphose'; /** Go one depth deeper (default) or stay at the current depth. */ descend?: boolean };
+  | { t: 'metamorphose'; /** Go one depth deeper (default) or stay at the current depth. */ descend?: boolean }
+  | { t: 'endGrace' };
 
 export type ReasonCode =
   | 'outOfBounds'

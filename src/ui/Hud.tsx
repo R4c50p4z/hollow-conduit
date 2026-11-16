@@ -2,9 +2,9 @@ import { host } from '../game/host';
 import { useUI } from '../game/store';
 import { useT } from '../i18n';
 import { resName } from '../i18n/game';
-import { Formulas as F, stabilityOf } from '../sim';
+import { Formulas as F, graceLeft, stabilityOf } from '../sim';
 import { HEART_WEIGHTS, META_THRESHOLD } from '../sim/config';
-import { fmt, fmtTime } from './format';
+import { fmt, fmtDuration, fmtTime } from './format';
 import { Objective } from './Objective';
 import { RES_COLOR } from './palette';
 
@@ -32,6 +32,8 @@ export function Hud() {
               {t('hud.leeches', { n: s.leeches.length })}
               {latched ? ` · ${t('hud.feeding', { n: latched })}` : ''}
             </span>
+          ) : graceLeft(s) > 0 ? (
+            <span className="threat grace">{t('hud.grace', { time: fmtDuration(graceLeft(s)) })}</span>
           ) : (
             <span className="threat">{t('hud.waveIn', { wave: s.wave + 1, time: fmtTime(s.waveTimer) })}</span>
           )}

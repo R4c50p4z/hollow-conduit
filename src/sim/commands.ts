@@ -159,6 +159,10 @@ export function applyCommand(s: SimState, cmd: Command): CommandResult {
       s.mutations[cmd.id]++;
       return OK;
     }
+    case 'endGrace': {
+      s.graceUntil = 0;
+      return OK;
+    }
     case 'metamorphose': {
       const gain = F.mutagenYield(s.runEssence, s.depth);
       if (gain.lte(0)) return fail('metaThreshold', { need: C.META_THRESHOLD });

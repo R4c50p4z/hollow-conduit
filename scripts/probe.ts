@@ -20,6 +20,7 @@ const minutes = Number(process.argv[2] ?? 60);
 const seed = Number(process.argv[3] ?? 1);
 
 const s = createState(seed);
+s.graceUntil = 0; // measure the full hazard model
 for (const t of s.tiles) {
   if (t.building?.kind !== 'heart') t.building = null;
   t.terrain = 'rock';

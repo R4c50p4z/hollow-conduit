@@ -225,3 +225,22 @@ th:first-child, td:first-child { text-align: left; }
 .verdict.ok { color: var(--essence); }
 .verdict.warn { color: #ff9a5c; }
 .sheet li.good { color: var(--essence); }
+.threat.grace { color: var(--vitriol); }
+
+/* --- Tutorial ------------------------------------------------------------------------ */
+.sheet.tutorial { max-height: 94vh; display: flex; flex-direction: column; }
+.tut-head { display: flex; justify-content: space-between; align-items: center; }
+.tut-n { font-family: var(--mono); font-size: 11px; color: var(--sepia); }
+.tut-lang { margin: 4px 0 8px; }
+.demo { margin: 4px 0 6px; }
+.demo canvas { display: block; width: 100%; border: 1px solid var(--edge); background: var(--void); }
+.demo figcaption { font-family: var(--mono); font-size: 10px; color: var(--sepia); margin-top: 3px; text-align: right; }
+.tut-body { margin: 6px 0; padding-left: 18px; font-size: 14px; line-height: 1.45; overflow-y: auto; }
+.tut-body li { margin-bottom: 5px; }
+.tut-body b { font-weight: normal; color: var(--essence); }
+.tut-dots { display: flex; justify-content: center; gap: 6px; margin: 6px 0 8px; flex-wrap: wrap; }
+.tut-dots button { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); padding: 0; }
+.tut-dots button.on { background: var(--essence); }
+.tut-nav { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; }
+.tut-nav .act { min-height: 44px; font-size: 15px; }
+.act:disabled { opacity: 0.35; }

@@ -124,6 +124,12 @@ export const WARD_RADIUS = 2;
 export const WARD_DPS = 1;
 export const WARD_BURN = 0.3; // spore/s
 
+/**
+ * Grace period: no leech waves during the first GRACE_SECONDS of total play time (lifetime sim time,
+ * including time simulated while away; it carries across metamorphoses). Lets new players learn the
+ * logistics before defending. Can be ended early from Settings.
+ */
+export const GRACE_SECONDS = 2 * 86400;
 export const WAVE_FIRST = 240;
 export const WAVE_INTERVAL = 200;
 export const WAVE_DECAY = 0.96;

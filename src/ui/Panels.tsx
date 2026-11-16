@@ -2,7 +2,8 @@ import { host } from '../game/host';
 import { useUI } from '../game/store';
 import { LANGS, useT } from '../i18n';
 import { mutBlurb, mutName, reasonText } from '../i18n/game';
-import { Formulas as F, type MutationId } from '../sim';
+import { Formulas as F, graceLeft, type MutationId } from '../sim';
+import { GRACE_SECONDS } from '../sim/config';
 import { META_THRESHOLD, MUTATIONS, UNSPENT_MUTAGEN_BONUS } from '../sim/config';
 import { OFFLINE } from '../sim/offline';
 import { fmt, fmtDuration, fmtTime, int } from './format';
@@ -145,6 +146,7 @@ export function SettingsPanel() {
             {t('settings.sci')}
           </button>
         </div>
+        <GraceSetting />
         <h3>{t('settings.tutorial')}</h3>
         <div className="seg">
           <button className={`act ${tutorial ? 'on' : ''}`} onClick={() => setTutorial(!tutorial)}>
@@ -186,6 +188,7 @@ export function OfflineModal() {
           <li>{t('off.simulated', { time: fmtDuration(offline.simulated) })}</li>
           {offline.extrapolated > 0 && <li className="good">{t('off.stable', { time: fmtDuration(offline.extrapolated) })}</li>}
           {offline.extrapolated === 0 && offline.simulated >= OFFLINE.simCap - 1 && <li className="bad">{t('off.unstable')}</li>}
+          {offline.stoppedAtGrace && <li>{t('off.graceEnd')}</li>}
           <li>{t('off.waves', { n: offline.waves, k: offline.leechesKilled })}</li>
           <li className={offline.ruptures ? 'bad' : ''}>{t('off.ruptures', { n: offline.ruptures })}</li>
         </ul>
@@ -195,5 +198,26 @@ export function OfflineModal() {
         </button>
       </div>
     </div>
+  );
+}
+
+function GraceSetting() {
+  useUI((u) => u.frame);
+  const t = useT();
+  const left = graceLeft(host.state);
+  return (
+    <>
+      <h3>{t('settings.grace')}</h3>
+      {left > 0 ? (
+        <>
+          <p className="sub">{t('settings.graceLeft', { time: fmtDuration(left), days: GRACE_SECONDS / 86400 })}</p>
+          <button className="act" onClick={() => confirm(t('settings.graceConfirm')) && host.dispatch({ t: 'endGrace' })}>
+            {t('settings.graceEnd')}
+          </button>
+        </>
+      ) : (
+        <p className="sub">{t('settings.graceOver')}</p>
+      )}
+    </>
   );
 }

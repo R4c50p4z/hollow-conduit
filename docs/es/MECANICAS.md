@@ -211,8 +211,12 @@ Además:
 
 ## 7. Sanguijuelas
 
+**Periodo de gracia:** durante los primeros **2 días de juego** (172.800 s de tiempo total de partida, incluido el
+simulado sin conexión; no se reinicia con la metamorfosis) las madrigueras no sueltan nada. La primera oleada llega 4:00
+después de que termine. Se puede terminar antes desde ⚙ Ajustes.
+
 **Oleadas:**
-- Primera a los **4:00**. Después cada `máx(75, 200 · 0,96^oleada)` s: 192 s, 184 s… hasta 75 s a partir de la oleada 24.
+- Primera a los **4:00** (tras la gracia). Después cada `máx(75, 200 · 0,96^oleada)` s: 192 s, 184 s… hasta 75 s a partir de la oleada 24.
 - Cantidad: `1 + ⌊mín(oleada, 12)/3⌋ + ⌊log₁₀(1+E)/2⌋`. El número de oleada deja de sumar a partir de la 12 (como
   máximo +4).
 

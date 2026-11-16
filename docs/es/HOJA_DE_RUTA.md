@@ -2,6 +2,15 @@
 
 ## Registro de cambios
 
+### v0.4: periodo de gracia y tutorial
+- **Periodo de gracia:** sin sanguijuelas durante los primeros 2 días de juego (cuenta el tiempo total, también con la
+  app cerrada, y sobrevive a la metamorfosis). El HUD muestra lo que queda y se puede terminar antes en ⚙ Ajustes. Los
+  objetivos de sanguijuelas esperan a que acabe.
+- Fuera de casa, la producción constante solo se acredita hasta el final de la gracia: una red que no se ha enfrentado a
+  sanguijuelas aún no ha demostrado ser estable.
+- **Tutorial en el juego:** 13 páginas con **demostraciones en vivo** que ejecutan el motor real. Se abre en la primera
+  partida y con el botón **?**. Un test comprueba que cada demostración enseña lo que dice su texto.
+
 ### v0.3.1: app web instalable
 - Se instala desde Safari en la pantalla de inicio, a pantalla completa y con icono propio, y funciona sin conexión.
 - Despliegue listo para Netlify (gratis con repos privados) y GitHub Pages. Guía en `INSTALAR.md`.

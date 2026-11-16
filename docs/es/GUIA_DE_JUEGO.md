@@ -12,6 +12,13 @@ o purgar. Y todo eso es la respuesta a un fallo que tu diseño permitió.
 
 ---
 
+## Tutorial y periodo de gracia
+
+- La primera vez se abre un **tutorial de 13 páginas con demostraciones animadas** de cada mecánica. Puedes volver a él
+  con el botón **?**.
+- Durante tus **primeros 2 días de juego no hay sanguijuelas**: el HUD muestra «sin sanguijuelas · tiempo restante».
+  Aprovéchalo para aprender la logística. Cuando te sientas preparado puedes terminarlo antes en ⚙ Ajustes.
+
 ## La pantalla
 
 ```

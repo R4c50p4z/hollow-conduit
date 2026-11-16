@@ -17,7 +17,7 @@ async function boot() {
   window.addEventListener('pointerdown', () => audio.unlock(), { passive: true });
   document.documentElement.lang = useUI.getState().lang;
   host.start();
-  if (!report && host.state.time === 0) useUI.setState({ panel: 'help' });
+  if (!report && host.state.time === 0) useUI.setState({ panel: 'tutorial' });
 }
 
 void boot();

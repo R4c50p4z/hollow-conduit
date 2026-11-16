@@ -18,6 +18,7 @@ function lab(): SimState {
     t.rot = 0;
   }
   s.waveTimer = 1e9;
+  s.graceUntil = 0; // tests exercise hazards from the start
   s.essence = new Decimal(1e12);
   return s;
 }

@@ -1,7 +1,7 @@
 import { host } from '../game/host';
 import { useUI } from '../game/store';
 import { useT } from '../i18n';
-import type { SimState } from '../sim';
+import { graceLeft, type SimState } from '../sim';
 
 /**
  * Light guided tutorial: the first unmet objective, derived from lifetime stats (monotonic), so it
@@ -10,13 +10,14 @@ import type { SimState } from '../sim';
 const heartTier = (s: SimState) => s.tiles[s.heartY * s.w + s.heartX].building?.tier ?? 0;
 const L = (s: SimState) => s.stats.life;
 
-export const OBJECTIVES: { id: string; done: (s: SimState) => boolean }[] = [
+export const OBJECTIVES: { id: string; done: (s: SimState) => boolean; skip?: (s: SimState) => boolean }[] = [
   { id: 'tap', done: (s) => (L(s).builtByKind.tap ?? 0) > 0 },
   { id: 'connect', done: (s) => L(s).consumed[0] > 1 },
   { id: 'spores', done: (s) => L(s).consumed[1] > 1 },
   { id: 'digester', done: (s) => L(s).consumed[2] > 1 },
   { id: 'heart', done: (s) => heartTier(s) >= 1 || s.stats.metamorphoses > 0 },
-  { id: 'strike', done: (s) => L(s).leechesKilled > 0 },
+  // Leech goals wait until the grace period is over; they come back as soon as it ends.
+  { id: 'strike', done: (s) => L(s).leechesKilled > 0, skip: (s) => graceLeft(s) > 0 },
   { id: 'ward', done: (s) => (L(s).builtByKind.ward ?? 0) > 0 },
   { id: 'vitriol', done: (s) => L(s).consumed[3] > 1 },
   { id: 'meta', done: (s) => s.stats.metamorphoses > 0 },
@@ -28,7 +29,7 @@ export function Objective() {
   const { tutorial, setTutorial } = useUI();
   if (!tutorial) return null;
   const s = host.state;
-  const i = OBJECTIVES.findIndex((o) => !o.done(s));
+  const i = OBJECTIVES.findIndex((o) => !o.done(s) && !o.skip?.(s));
   if (i < 0) return null;
   return (
     <div className="objective">

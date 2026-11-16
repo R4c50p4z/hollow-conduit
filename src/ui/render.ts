@@ -25,11 +25,13 @@ const hash = (x: number, y: number, k = 0) => {
 
 // --- Background (cached) -----------------------------------------------------------------
 
-let bgCache: { key: string; canvas: HTMLCanvasElement } | null = null;
+/** A few cached backgrounds (main board + tutorial demos), keyed by map, tile size and DPR. */
+const bgCache = new Map<string, HTMLCanvasElement>();
 
 function background(s: SimState, L: Layout, dpr: number): HTMLCanvasElement {
-  const key = `${s.seed}:${L.T}:${dpr}:${s.tiles.map((t) => t.terrain[0]).join('')}`;
-  if (bgCache?.key === key) return bgCache.canvas;
+  const key = `${s.seed}:${s.w}x${s.h}:${L.T}:${dpr}:${s.tiles.map((t) => t.terrain[0]).join('')}`;
+  const hit = bgCache.get(key);
+  if (hit) return hit;
   const c = document.createElement('canvas');
   c.width = L.T * s.w * dpr;
   c.height = L.T * s.h * dpr;
@@ -107,7 +109,8 @@ function background(s: SimState, L: Layout, dpr: number): HTMLCanvasElement {
       }
     }
   }
-  bgCache = { key, canvas: c };
+  bgCache.set(key, c);
+  if (bgCache.size > 6) bgCache.delete(bgCache.keys().next().value as string);
   return c;
 }
 

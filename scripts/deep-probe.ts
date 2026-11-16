@@ -62,6 +62,7 @@ function prepare(s: SimState) {
 }
 
 const s = createState(seed);
+s.graceUntil = 0; // measure the full hazard model
 prepare(s);
 let cycleStart = 0;
 let bestRatio = 0;

@@ -466,7 +466,16 @@ export function isFlowing(s: SimState, b: Building): boolean {
 
 // --- 6. Parasites ------------------------------------------------------------------------------
 
+/** Seconds of grace left (0 once leeches are active). */
+export const graceLeft = (s: SimState) => Math.max(0, (s.graceUntil ?? C.GRACE_SECONDS) - s.stats.life.time);
+
 function parasites(s: SimState, dt: number) {
+  if (graceLeft(s) > 0) {
+    // Grace: the burrows stay quiet. The first wave comes WAVE_FIRST after grace ends.
+    s.leeches = [];
+    s.waveTimer = C.WAVE_FIRST;
+    return;
+  }
   s.waveTimer -= dt;
   if (s.waveTimer <= 0) spawnWave(s);
 

@@ -5,7 +5,7 @@ import type { OfflineReport } from './host';
 export type Overlay = 'none' | 'pressure' | 'rot';
 export type Lang = 'en' | 'es';
 export type Notation = 'suffix' | 'sci';
-export type Panel = 'none' | 'mutations' | 'help' | 'stats' | 'settings';
+export type Panel = 'none' | 'mutations' | 'help' | 'stats' | 'settings' | 'tutorial';
 
 const PREF = 'hollow-conduit/';
 const load = (k: string) => {

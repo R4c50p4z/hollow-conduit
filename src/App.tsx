@@ -9,6 +9,7 @@ import { Hud } from './ui/Hud';
 import { Inspector } from './ui/Inspector';
 import { HelpPanel, MutationsPanel, OfflineModal, SettingsPanel } from './ui/Panels';
 import { StatsPanel } from './ui/StatsPanel';
+import { TutorialPanel } from './ui/tutorial/Tutorial';
 
 function Feed() {
   useUI((u) => u.frame);
@@ -55,6 +56,7 @@ export function App() {
       {panel === 'help' && <HelpPanel />}
       {panel === 'stats' && <StatsPanel />}
       {panel === 'settings' && <SettingsPanel />}
+      {panel === 'tutorial' && <TutorialPanel />}
       <OfflineModal />
       {loading !== null && (
         <div className="modal">

@@ -18,6 +18,7 @@ function lab(): SimState {
     t.rot = 0;
   }
   s.waveTimer = 1e9;
+  s.graceUntil = 0; // tests exercise hazards from the start
   s.depth = -1000; // no entropy
   s.essence = new Decimal(1e12);
   return s;
@@ -308,5 +309,40 @@ describe('entropy', () => {
     expect(s.stats.run.entropySeeds).toBeGreaterThan(100);
     expect(Math.max(...s.tiles.map((t) => t.rot))).toBeLessThan(C.ROT_TIPPING);
     expect(s.stats.run.ruptures).toBe(0);
+  });
+});
+
+describe('grace period', async () => {
+  const { graceLeft } = await import('./engine');
+  const { simulateOffline, OFFLINE } = await import('./offline');
+  it('no leeches during grace; waves start WAVE_FIRST after it ends (or after ending it early)', () => {
+    const s = createState(3);
+    expect(graceLeft(s)).toBe(C.GRACE_SECONDS);
+    s.waveTimer = 0.01;
+    simulate(s, 600);
+    expect(s.leeches.length).toBe(0);
+    expect(s.stats.life.waves).toBe(0);
+    expect(applyCommand(s, { t: 'endGrace' })).toEqual({ ok: true });
+    expect(graceLeft(s)).toBe(0);
+    simulate(s, C.WAVE_FIRST + 1);
+    expect(s.stats.life.waves).toBe(1);
+  });
+
+  it('old saves without the field get grace counted from their lifetime', () => {
+    const s = createState(4);
+    delete s.graceUntil;
+    s.stats.life.time = C.GRACE_SECONDS - 100;
+    expect(graceLeft(s)).toBeCloseTo(100, 6);
+  });
+
+  it('offline extrapolation stops where grace ends', () => {
+    const s = lab();
+    s.graceUntil = OFFLINE.simCap + 3600; // grace ends 1 h after the simulated window
+    put(s, 4, 4, 'tap', 2);
+    for (let y = 5; y < s.heartY; y++) put(s, 4, y, 'conduit', 2);
+    const r = simulateOffline(s, 5 * 86400);
+    expect(r.stable).toBe(true);
+    expect(r.stoppedAtGrace).toBe(true);
+    expect(r.extrapolated).toBeCloseTo(3600, -1);
   });
 });

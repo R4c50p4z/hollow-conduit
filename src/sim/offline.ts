@@ -1,5 +1,5 @@
 import Decimal from 'break_eternity.js';
-import { tick } from './engine';
+import { graceLeft, tick } from './engine';
 import { count, countE } from './stats';
 import type { SimState } from './types';
 
@@ -26,6 +26,8 @@ export interface OfflineResult {
   simulated: number;
   extrapolated: number;
   stable: boolean;
+  /** Extrapolation stopped where the grace period ended: the network hasn't faced leeches yet. */
+  stoppedAtGrace: boolean;
   essenceBefore: Decimal;
   essenceAfter: Decimal;
   ruptures: number;
@@ -58,19 +60,24 @@ export function* runOffline(s: SimState, awaySeconds: number, chunk = 400): Gene
 
   let extrapolated = 0;
   let stable = false;
+  let stoppedAtGrace = false;
   const rest = away - simulated;
   if (rest > 1 && windowStart) {
     const span = simulated - windowStart.at;
     stable = span >= OFFLINE.stableWindow - 1 && s.stats.life.ruptures === windowStart.ruptures && structures(s) >= windowStart.structures;
     if (stable) {
       const avg = s.stats.life.essenceEarned.sub(windowStart.earned).div(span);
-      const gain = avg.mul(rest);
+      // Stability measured without leeches doesn't prove anything past the end of grace.
+      const grace = graceLeft(s);
+      const credit = grace > 0 && grace < rest ? grace : rest;
+      stoppedAtGrace = credit < rest;
+      const gain = avg.mul(credit);
       s.essence = s.essence.add(gain);
       s.runEssence = s.runEssence.add(gain);
       s.totalEssence = s.totalEssence.add(gain);
       countE(s, 'essenceEarned', gain);
-      count(s, 'time', rest);
-      extrapolated = rest;
+      count(s, 'time', credit);
+      extrapolated = credit;
     }
   }
 
@@ -79,6 +86,7 @@ export function* runOffline(s: SimState, awaySeconds: number, chunk = 400): Gene
     simulated,
     extrapolated,
     stable,
+    stoppedAtGrace,
     essenceBefore,
     essenceAfter: s.essence,
     ruptures: s.stats.life.ruptures - r0,

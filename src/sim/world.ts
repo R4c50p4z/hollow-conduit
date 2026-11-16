@@ -82,6 +82,7 @@ export function createState(seed: number): SimState {
     depth: 0,
     totalEssence: new Decimal(0),
     achievements: [],
+    graceUntil: C.GRACE_SECONDS,
     stats: zeroStats(),
     events: [],
   };

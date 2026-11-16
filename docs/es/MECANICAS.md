@@ -105,6 +105,11 @@ Cada nivel **duplica** el ritmo (`2^t`). La podredumbre lo reduce: `× (1 − 0,
   casilla por paso**, haya el orden que haya.
 - El orden de recorrido **rota cada paso**, para que en las uniones no gane siempre la misma entrada.
 
+### 4.1 bis Cambio de fluido
+Un conducto (o carril de Cruce, o Depósito) con un fluido rechaza otro **salvo que solo le quede un resto menor del 2 %
+de su capacidad** (0,24 en un conducto básico). En ese caso el resto **se derrama** (cuenta en «Derramado») y el
+conducto pasa a llevar el fluido nuevo. Antes había que esperar a que se vaciara del todo.
+
 ### 4.2 Quién acepta qué
 
 | Estructura | Acepta | Capacidad (nivel 0) | Empuja |
@@ -327,6 +332,25 @@ Coste del nivel indicado (de ese nivel al siguiente):
 Lista completa en [LOGROS.md](LOGROS.md).
 
 ---
+
+## 13. Planes, ruinas y planos
+
+**Ruinas.** Cuando algo revienta deja una **ruina** (fantasma punteado) que recuerda su tipo, orientación, nivel y modo.
+Dura **10 minutos**. Tócala para **reconstruirla** al coste actual (construcción + mejoras) o descartarla.
+
+**Reconstrucción automática** (⚙ Ajustes, desactivada por defecto): reconstruye solas las ruinas causadas por
+**podredumbre o sanguijuelas**, nunca las de **presión** (volverían a romperse: eso es un fallo de diseño que arreglas
+tú). Tope: como mucho el **10 % de tu esencia por hora**.
+
+**Planos.** Al metamorfosear se **guarda solo** el plano de tu caverna (posiciones relativas al Corazón, orientación y
+modo). En la caverna nueva, la barra de abajo ofrece **«Aplicar tu plano guardado»**; también desde ⚙ Ajustes, donde
+puedes guardar el plano actual cuando quieras. Al aplicarlo:
+- Todo se encola como planes y se construye **en orden, a nivel 0, en cuanto hay esencia**.
+- Lo que no encaja en el terreno nuevo (por ejemplo un Sangrador donde ya no hay veta) espera en **rojo** sin bloquear
+  el resto. Tócalo para descartarlo.
+
+**Deshacer.** Arrasar algo construido hace **10 segundos o menos** devuelve el **100 %**. El botón **↶ Deshacer**
+aparece tras cada toque o trazo durante esos 10 segundos.
 
 ## 12. Tiempo fuera y estabilidad
 

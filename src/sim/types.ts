@@ -28,9 +28,11 @@ export type Kind =
   | 'reactor'
   | 'cauterizer'
   | 'ward'
+  | 'mender'
+  | 'reservoir'
   | 'heart';
 
-export const ALL_KINDS: Kind[] = ['tap', 'sporangium', 'conduit', 'router', 'junction', 'digester', 'reactor', 'cauterizer', 'ward', 'heart'];
+export const ALL_KINDS: Kind[] = ['tap', 'sporangium', 'conduit', 'router', 'junction', 'reservoir', 'digester', 'reactor', 'cauterizer', 'ward', 'mender', 'heart'];
 
 export type Buf = [number, number, number, number];
 export const emptyBuf = (): Buf => [0, 0, 0, 0];
@@ -250,6 +252,14 @@ export interface SimState {
   depth: number;
   totalEssence: Decimal;
   achievements: string[];
+  /** Queued constructions: ruins of broken structures and blueprint placements. */
+  plans?: Plan[];
+  /** Saved layout (relative to the Heart), re-appliable after a metamorphosis. */
+  blueprint?: BlueprintEntry[];
+  /** Rebuild ruins automatically (rot/leech causes only, spend-capped). */
+  autoRebuild?: boolean;
+  /** Recent automatic rebuild spending (lifetime seconds), for the hourly cap. */
+  autoSpend?: { t: number; cost: Decimal }[];
   /** Lifetime seconds until which no leeches attack (undefined → GRACE_SECONDS). */
   graceUntil?: number;
 
@@ -270,7 +280,13 @@ export type Command =
   | { t: 'mutate'; id: MutationId }
   | { t: 'metamorphose'; /** Go one depth deeper (default) or stay at the current depth. */ descend?: boolean }
   | { t: 'endGrace' }
-  | { t: 'setMode'; x: number; y: number };
+  | { t: 'setMode'; x: number; y: number }
+  | { t: 'buildPlan'; x: number; y: number }
+  | { t: 'dropPlan'; x: number; y: number }
+  | { t: 'clearPlans' }
+  | { t: 'saveBlueprint' }
+  | { t: 'applyBlueprint' }
+  | { t: 'setAutoRebuild'; on: boolean };
 
 export type ReasonCode =
   | 'outOfBounds'
@@ -286,6 +302,31 @@ export type ReasonCode =
   | 'noLeech'
   | 'maxed'
   | 'noMutagen'
-  | 'metaThreshold';
+  | 'metaThreshold'
+  | 'noBlueprint'
+  | 'rebuildCap';
 
 export type CommandResult = { ok: true } | { ok: false; reason: ReasonCode; params?: EventParams };
+
+/** A queued construction. Ruins remember what broke; blueprint plans come from a saved layout. */
+export interface Plan {
+  x: number;
+  y: number;
+  kind: Kind;
+  dir: Dir;
+  tier: number;
+  mode?: 'split' | 'priority';
+  src: 'ruin' | 'blueprint';
+  /** Cycle time when queued (ruins expire). */
+  at: number;
+  cause?: RuptureCause;
+}
+
+export interface BlueprintEntry {
+  dx: number;
+  dy: number;
+  kind: Kind;
+  dir: Dir;
+  tier: number;
+  mode?: 'split' | 'priority';
+}

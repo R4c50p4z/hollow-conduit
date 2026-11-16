@@ -43,6 +43,11 @@ interface UIState {
   notation: Notation;
   tutorial: boolean;
   sound: boolean;
+  /** Upgrade-by-drag mode and its selection (tile indices). */
+  upgradeMode: boolean;
+  upgradeSel: number[];
+  /** Tiles built by the last tap/drag, for Undo (wall-clock ms). */
+  lastStroke: { cells: number[]; at: number } | null;
   /** Bumped ~8×/s so React HUD re-renders at a calm rate; the canvas draws every frame on its own. */
   frame: number;
   set: (p: Partial<UIState>) => void;
@@ -66,6 +71,9 @@ export const useUI = create<UIState>((set) => ({
   notation: load('notation') === 'sci' ? 'sci' : 'suffix',
   tutorial: load('tutorial') !== 'off',
   sound: load('sound') !== 'off',
+  upgradeMode: false,
+  upgradeSel: [],
+  lastStroke: null,
   frame: 0,
   set: (p) => set(p),
   say: (msg) => set({ toast: { msg, at: Date.now() } }),

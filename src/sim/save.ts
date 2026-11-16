@@ -1,6 +1,6 @@
 import Decimal from 'break_eternity.js';
 import { zeroStats } from './stats';
-import type { SimState } from './types';
+import { ALL_KINDS, type SimState } from './types';
 import { SAVE_VERSION } from './world';
 
 /** Decimal fields are serialised as {$d: string}; everything else is plain JSON. */
@@ -14,7 +14,10 @@ export function serialize(s: SimState): string {
 
 export function deserialize(json: string): SimState {
   const s = JSON.parse(json, (_k, v) => (v && typeof v === 'object' && '$d' in v ? new Decimal(v.$d) : v)) as SimState;
-  return migrate(s);
+  const m = migrate(s);
+  // Structures added after a save was made start at 0 built.
+  for (const k of ALL_KINDS) (m.built as Record<string, number>)[k] ??= 0;
+  return m;
 }
 
 /** Bring older saves up to the current shape. Each step is idempotent. */

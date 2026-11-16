@@ -4,7 +4,7 @@ import { useUI } from './game/store';
 import { useT } from './i18n';
 import { eventText } from './i18n/game';
 import { Board } from './ui/Board';
-import { BuildBar } from './ui/BuildBar';
+import { BuildBar, ToolHint, UpgradeBar } from './ui/BuildBar';
 import { Hud } from './ui/Hud';
 import { Inspector } from './ui/Inspector';
 import { HelpPanel, MutationsPanel, OfflineModal, SettingsPanel } from './ui/Panels';
@@ -31,7 +31,7 @@ function Feed() {
 }
 
 export function App() {
-  const { selected, panel, loading, set } = useUI();
+  const { selected, panel, loading, set, upgradeMode } = useUI();
   const t = useT();
 
   useEffect(() => {
@@ -50,8 +50,9 @@ export function App() {
       <main className="stage">
         <Board />
         <Feed />
+        <ToolHint />
       </main>
-      <footer className="dock">{selected ? <Inspector x={selected.x} y={selected.y} /> : <BuildBar />}</footer>
+      <footer className="dock">{upgradeMode ? <UpgradeBar /> : selected ? <Inspector x={selected.x} y={selected.y} /> : <BuildBar />}</footer>
       {panel === 'mutations' && <MutationsPanel />}
       {panel === 'help' && <HelpPanel />}
       {panel === 'stats' && <StatsPanel />}

@@ -2,6 +2,17 @@
 
 ## Registro de cambios
 
+### v0.6: lecciones de Mindustry (prioridades 2 y 3)
+- **Tendido asistido** (búsqueda de camino con penalización de giros) y **Deshacer** (reembolso del 100 % en 10 s).
+- **Cambio de fluido** con resto < 2 % (se derrama) en vez de esperar al vaciado total.
+- **Mejorar arrastrando** con coste total antes de confirmar.
+- **Planos**: se guardan al metamorfosear y se reaplican como planes en la caverna nueva.
+- **Ruinas** reconstruibles 10 min y **reconstrucción automática** opcional (solo podredumbre/sanguijuelas, tope 10 %/h).
+- **Cicatrizante** (cura con icor) y **Depósito** (conducto ×4 de capacidad).
+- **Vista previa** al colocar (casillas válidas + cifras reales + aviso de proporción), **anillo** en el productor que
+  origina una tensión, «produce/entrega» en la ficha y **madrigueras que laten** los 30 s antes de una oleada.
+- Pruebas AFK de 24 h sin cambios en el equilibrio.
+
 ### v0.5: lecciones de Mindustry (prioridad 1)
 - **Ganglio con modo prioridad** (compuerta de desbordamiento): todo por el lado al que apunta y el sobrante a los demás.
   Resuelve la trampa Digestor → una sola Matriz.

@@ -12,10 +12,12 @@ reduce ×(1 − 0,75·r).
 | **Conducto** | roca | 2 | ×1,04 | Lleva un fluido en su dirección a 6/s |
 | **Ganglio** | roca | 8 | ×1,10 | Reparte a todos los lados que no le alimentan, 8/s |
 | **Cruce** | roca | 12 | ×1,12 | Dos flujos se cruzan sin mezclarse, 6/s por carril |
+| **Depósito** | roca | 40 | ×1,15 | Conducto con 4× capacidad (48): absorbe picos |
 | **Digestor** | roca | 60 | ×1,25 | 2 icor → 1 bilis, 0,5 transmutaciones/s |
 | **Matriz Catalítica** | roca | 400 | ×1,30 | 1 bilis + 2 esporas → 1 vitriolo, 0,25/s |
 | **Guardia de Espinas** | roca | 150 | ×1,45 | Quema 0,3 esporas/s → 1 daño/s a sanguijuelas (5×5) |
 | **Cauterizador** | roca | 250 | ×1,50 | Quema 0,25 bilis/s → −0,05 podredumbre/s (5×5) |
+| **Cicatrizante** | roca | 120 | ×1,40 | Quema 0,1 icor/s → cura 0,6 %/s de integridad (5×5) |
 | **El Corazón** | — | — | — | Sintetiza esencia. Tope 8/s por recurso |
 
 «Crec./copia» es lo que se encarece cada estructura adicional del mismo tipo. Si una revienta o la arrasas, el contador
@@ -118,6 +120,20 @@ supraexponencial: `× 1,1^(t(t−1)/2)`. Sus siguientes niveles: 6→7 = 5,20e12
 - **En línea** como la Guardia, pero con **bilis**.
 - Si hay podredumbre en su cuadrado de 5×5, quema `0,25 · 1,5^nivel` bilis/s y quita `0,05 · 2^nivel` de podredumbre/s
   en **cada** casilla del área.
+
+### Depósito
+- Funciona como un **conducto** (dirección, un solo fluido, mismo caudal 6 · 2^nivel) pero guarda **48 · 2^nivel**,
+  cuatro veces más.
+- Sirve para **picos y altibajos**: Guardias que gastan a ráfagas, caídas de caudal pasajeras, etc.
+- **No sirve para sobrantes permanentes:** si entra más de lo que sale, al final se llena y entra en tensión igual que un
+  conducto. Para sobrantes, un Ganglio en prioridad.
+
+### Cicatrizante
+- **En línea** como la Guardia, pero con **icor**: guarda 4 · 2^nivel de reserva y deja pasar el resto.
+- Si hay algo dañado en su cuadrado de 5×5, quema `0,1 · 1,5^nivel` icor/s y cura `0,6 % · 2^nivel` de integridad por
+  segundo a **cada** estructura dañada del área (incluida ella misma).
+- **No cura lo que está en tensión**: un atasco hay que arreglarlo, no taparlo.
+- Junto a una Guardia la hace prácticamente indestructible: las espinas solo dejan morder 0,25 %/s.
 
 ### El Corazón
 - Uno por caverna, abajo en el centro. Acepta los cuatro recursos por cualquier lado.

@@ -276,3 +276,15 @@ th:first-child, td:first-child { text-align: left; }
 .fc-result.ok b { color: var(--essence); font-weight: normal; }
 .fc-result.warn b { color: #ff9a5c; font-weight: normal; }
 .fc-result ul { margin: 4px 0 0; padding-left: 18px; font-size: 12px; line-height: 1.5; }
+/* v0.6: 11 structures in two rows of six; undo; upgrade-by-drag bar */
+.tools { grid-template-columns: repeat(6, 1fr); }
+.tool { padding: 3px 4px; }
+.tool-name { font-size: 10.5px; }
+.bar-row .undo { flex: 1; min-height: 36px; font-size: 12px; }
+.upgradebar { display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
+.up-actions { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; }
+.up-actions .act { min-height: 44px; }
+.tool-hint { position: absolute; left: 8px; right: 8px; bottom: 6px; padding: 6px 10px; background: rgba(11, 9, 7, 0.88); border: 1px solid var(--edge); font-size: 12px; line-height: 1.35; color: var(--bone); pointer-events: none; }
+.rate-line { font-family: var(--mono); font-size: 11px !important; color: var(--sepia); margin: 0 0 2px !important; }
+.bad-text { color: #ff9a5c !important; }
+.seg.col { flex-direction: column; align-items: stretch; }

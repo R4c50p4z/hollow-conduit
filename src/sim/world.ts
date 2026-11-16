@@ -24,7 +24,7 @@ export function newBuilding(kind: Kind, dir: Dir, invested: Decimal = new Decima
 }
 
 const zeroBuilt = (): Record<Kind, number> => ({
-  tap: 0, sporangium: 0, conduit: 0, router: 0, junction: 0, digester: 0, reactor: 0, cauterizer: 0, ward: 0, heart: 1,
+  tap: 0, sporangium: 0, conduit: 0, router: 0, junction: 0, reservoir: 0, digester: 0, reactor: 0, cauterizer: 0, ward: 0, mender: 0, heart: 1,
 });
 
 export const zeroMutations = (): Mutations => ({ hypertrophy: 0, vascular: 0, fecundity: 0, chitin: 0, talons: 0, catalysis: 0 });
@@ -103,6 +103,8 @@ export function resetRun(s: SimState, newSeed: number) {
   s.rate = new Decimal(0);
   s.intake = emptyBuf();
   s.built = zeroBuilt();
+  s.plans = [];
+  s.autoSpend = [];
   generateMap(s);
 }
 

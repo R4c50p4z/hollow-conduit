@@ -4,6 +4,7 @@ import { contentsOf } from './engine';
 import * as F from './formulas';
 import { closeRun, count, countE, countKind, countRes } from './stats';
 import type { Command, CommandResult, EventParams, Kind, ReasonCode, SimState } from './types';
+import { applyBlueprint, executePlan, plansOf, saveBlueprint } from './plans';
 import { newBuilding, pushEvent, resetRun, tileAt } from './world';
 
 const fail = (reason: ReasonCode, params?: EventParams): CommandResult => ({ ok: false, reason, params });
@@ -79,7 +80,9 @@ export function applyCommand(s: SimState, cmd: Command): CommandResult {
       if (!t || !b || b.kind === 'heart') return fail('nothingThere');
       // Contents spill on demolition: you can't dodge a pressure crisis for free.
       if (spill(s, cmd.x, cmd.y)) t.rot = Math.min(1, t.rot + C.VENT_ROT);
-      const refund = b.invested.mul(C.REFUND_FRACTION);
+      // Undo window: razing something you just built gives everything back.
+      const regret = b.bornAt !== undefined && s.time - b.bornAt <= C.REGRET_SECONDS;
+      const refund = b.invested.mul(regret ? 1 : C.REFUND_FRACTION);
       s.essence = s.essence.add(refund);
       countE(s, 'refunded', refund);
       s.built[b.kind] = Math.max(0, s.built[b.kind] - 1);
@@ -132,6 +135,33 @@ export function applyCommand(s: SimState, cmd: Command): CommandResult {
       t.rot = 0;
       return OK;
     }
+    case 'buildPlan': {
+      const p = plansOf(s).find((q) => q.x === cmd.x && q.y === cmd.y);
+      if (!p) return fail('nothingThere');
+      return executePlan(s, p, false);
+    }
+    case 'dropPlan': {
+      const before = plansOf(s).length;
+      s.plans = plansOf(s).filter((q) => q.x !== cmd.x || q.y !== cmd.y);
+      return s.plans.length < before ? OK : fail('nothingThere');
+    }
+    case 'clearPlans': {
+      s.plans = [];
+      return OK;
+    }
+    case 'saveBlueprint': {
+      saveBlueprint(s);
+      return OK;
+    }
+    case 'applyBlueprint': {
+      if (!s.blueprint?.length) return fail('noBlueprint');
+      applyBlueprint(s);
+      return OK;
+    }
+    case 'setAutoRebuild': {
+      s.autoRebuild = cmd.on;
+      return OK;
+    }
     case 'setMode': {
       const b = tileAt(s, cmd.x, cmd.y)?.building;
       if (!b || b.kind !== 'router') return fail('nothingThere');
@@ -172,6 +202,7 @@ export function applyCommand(s: SimState, cmd: Command): CommandResult {
     case 'metamorphose': {
       const gain = F.mutagenYield(s.runEssence, s.depth);
       if (gain.lte(0)) return fail('metaThreshold', { need: C.META_THRESHOLD });
+      saveBlueprint(s); // the layout you just built can be re-applied in the next cavern
       closeRun(s, gain);
       s.mutagen = s.mutagen.add(gain);
       if (cmd.descend !== false) s.depth++;

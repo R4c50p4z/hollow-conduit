@@ -3,11 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { checkAchievements } from './achievements';
 import { applyCommand } from './commands';
 import * as C from './config';
-import { simulate, tick } from './engine';
+import { rupture, simulate, tick } from './engine';
 import { deserialize, serialize } from './save';
 import { snapshot } from './stats';
 import type { Dir, Kind, SimState } from './types';
-import { createState, idx } from './world';
+import { createState, idx, newBuilding } from './world';
 
 function lab(): SimState {
   const s = createState(99);
@@ -427,5 +427,164 @@ describe('diagnosis and forecast', async () => {
     expect(f.waves).toBeGreaterThan(0); // leeches were tested despite grace
     expect(f.stable).toBe(false); // undefended: leeches eat it
     expect(f.ruptures).toBeGreaterThan(0);
+  });
+});
+
+describe('mender', () => {
+  it('heals damaged neighbours with ichor and out-heals a leech biting a ward', () => {
+    const s = lab();
+    s.depth = 0;
+    s.tiles[idx(s, 0, 0)].terrain = 'burrow';
+    const ward = put(s, 1, 0, 'ward', 3);
+    ward.store[1] = 8;
+    put(s, 2, 0, 'sporangium', 3); // keeps the ward fed
+    const mender = put(s, 1, 1, 'mender', 2);
+    mender.store[0] = 8;
+    put(s, 0, 2, 'tap', 0);
+    put(s, 0, 1, 'conduit', 1); // feeds the mender with ichor
+    const hurt = put(s, 2, 1, 'conduit', 1);
+    hurt.integrity = 0.5;
+    simulate(s, 120);
+    expect(hurt.integrity).toBeGreaterThan(0.95);
+    // Leech on the ward: thorns bite 0.25%/s, mender heals 0.6%/s.
+    ward.integrity = 0.8;
+    s.leeches.push({ id: 999, x: 1, y: 0, hp: 1e9, maxHp: 1e9, moveCd: 1e9, latched: true, fed: 0 });
+    simulate(s, 40);
+    expect(ward.integrity).toBeGreaterThan(0.8);
+    expect(s.stats.run.burned[0]).toBeGreaterThan(0);
+  });
+});
+
+describe('reservoir', () => {
+  it('holds 4x a conduit, passes flow, and still strains when a blocked pump forces it', () => {
+    const s = lab();
+    s.depth = 0;
+    put(s, 2, 2, 'tap', 2);
+    const res = put(s, 2, 3, 'reservoir', 2); // dead end
+    simulate(s, 40);
+    expect(res.store[0]).toBeGreaterThan(30);
+    expect(res.strained ?? false).toBe(false); // not full yet: absorbing
+    simulate(s, 30);
+    expect(res.pressure).toBeGreaterThan(0.85);
+    expect(res.strained).toBe(true);
+  });
+});
+
+describe('fluid switch threshold', () => {
+  it('a residue under 2% of capacity is spilled so the conduit can switch; more blocks it', () => {
+    const s = lab();
+    const c = put(s, 3, 3, 'conduit', 2);
+    c.store[0] = 0.2; // ichor residue (cap 12 → threshold 0.24)
+    put(s, 2, 3, 'sporangium', 1);
+    simulate(s, 3);
+    expect(c.store[0]).toBe(0);
+    expect(c.store[1]).toBeGreaterThan(0);
+    expect(s.stats.run.spilled[0]).toBeCloseTo(0.2, 6);
+    const d = put(s, 6, 3, 'conduit', 2);
+    d.store[0] = 1; // too much: stays ichor
+    put(s, 5, 3, 'sporangium', 1);
+    simulate(s, 3);
+    expect(d.store[1]).toBe(0);
+  });
+});
+
+describe('undo window', () => {
+  it('razing within 10 s refunds everything; later only half', () => {
+    const s = lab();
+    const e0 = s.essence;
+    put(s, 3, 3, 'conduit', 2);
+    applyCommand(s, { t: 'demolish', x: 3, y: 3 });
+    expect(s.essence.eq(e0)).toBe(true);
+    const c = put(s, 3, 3, 'conduit', 2);
+    simulate(s, 11);
+    const e1 = s.essence;
+    applyCommand(s, { t: 'demolish', x: 3, y: 3 });
+    expect(s.essence.sub(e1).toNumber()).toBeCloseTo(c.invested.toNumber() / 2, 6);
+  });
+});
+
+describe('ruins and auto-rebuild', () => {
+  it('a rupture leaves a ruin with kind, rotation and tier that one tap rebuilds', () => {
+    const s = lab();
+    s.depth = 0;
+    put(s, 2, 2, 'tap', 2);
+    put(s, 2, 3, 'conduit', 2);
+    applyCommand(s, { t: 'upgrade', x: 2, y: 3 });
+    rupture(s, idx(s, 2, 3), 'pressure');
+    expect(s.plans?.[0]).toMatchObject({ x: 2, y: 3, kind: 'conduit', dir: 2, tier: 1, src: 'ruin' });
+    s.tiles[idx(s, 2, 3)].rot = 0; // let it be buildable
+    expect(applyCommand(s, { t: 'buildPlan', x: 2, y: 3 })).toEqual({ ok: true });
+    expect(s.tiles[idx(s, 2, 3)].building).toMatchObject({ kind: 'conduit', dir: 2, tier: 1 });
+    expect(s.plans?.length).toBe(0);
+  });
+
+  it('auto-rebuild restores leech/rot losses but never pressure losses, and ruins expire', async () => {
+    const { addRuin } = await import('./plans');
+    const s = lab();
+    s.autoRebuild = true;
+    const leechLost = newBuilding('conduit', 1);
+    const pressureLost = newBuilding('conduit', 1);
+    addRuin(s, 3, 3, leechLost, 'leech');
+    addRuin(s, 6, 3, pressureLost, 'pressure');
+    simulate(s, 2);
+    expect(s.tiles[idx(s, 3, 3)].building?.kind).toBe('conduit');
+    expect(s.tiles[idx(s, 6, 3)].building).toBeNull();
+    expect(s.plans?.some((p) => p.x === 6)).toBe(true);
+    simulate(s, C.RUIN_TTL + 2);
+    expect(s.plans?.length).toBe(0); // expired
+  });
+
+  it('auto-rebuild spending is capped per hour', async () => {
+    const { addRuin } = await import('./plans');
+    const s = lab();
+    s.essence = new Decimal(100); // 10% → 10 essence per hour
+    s.autoRebuild = true;
+    for (let x = 1; x <= 8; x++) addRuin(s, x, 1, newBuilding('conduit', 1), 'rot');
+    simulate(s, 3);
+    const rebuilt = s.tiles.filter((t) => t.building?.kind === 'conduit').length;
+    expect(rebuilt).toBeGreaterThan(0);
+    expect(rebuilt).toBeLessThan(8); // ~2 essence each, cap ≈ 10
+  });
+});
+
+describe('blueprints', () => {
+  it('metamorphosis saves the layout; applying it queues plans that build as essence allows', () => {
+    const s = lab();
+    s.depth = 0;
+    const hx = s.heartX, hy = s.heartY;
+    for (let y = hy - 4; y < hy; y++) put(s, hx, y, 'conduit', 2);
+    put(s, hx + 1, hy - 4, 'router', 0);
+    s.runEssence = new Decimal(1e7);
+    expect(applyCommand(s, { t: 'metamorphose', descend: false }).ok).toBe(true);
+    expect(s.blueprint?.length).toBe(5);
+    expect(s.tiles.filter((t) => t.building && t.building.kind !== 'heart').length).toBe(0);
+    expect(applyCommand(s, { t: 'applyBlueprint' })).toEqual({ ok: true });
+    expect(s.plans?.length).toBe(5);
+    s.essence = new Decimal(1e6);
+    simulate(s, 6);
+    expect(s.tiles.filter((t) => t.building && t.building.kind !== 'heart').length).toBe(5);
+    expect(s.plans?.length).toBe(0);
+  });
+
+  it('plans that do not fit the new terrain wait without blocking the rest', () => {
+    const s = lab();
+    s.blueprint = [
+      { dx: 0, dy: -3, kind: 'tap', dir: 2, tier: 0 }, // no vein there → invalid
+      { dx: 0, dy: -2, kind: 'conduit', dir: 2, tier: 0 },
+    ];
+    applyCommand(s, { t: 'applyBlueprint' });
+    simulate(s, 3);
+    expect(s.tiles[idx(s, s.heartX, s.heartY - 2)].building?.kind).toBe('conduit');
+    expect(s.plans?.length).toBe(1); // the tap waits
+  });
+
+  it('old saves without the new kinds load with built counts of 0', () => {
+    const s = createState(8);
+    const json = JSON.parse(serialize(s));
+    delete json.built.mender;
+    delete json.built.reservoir;
+    const m = deserialize(JSON.stringify(json));
+    expect(m.built.mender).toBe(0);
+    expect(m.built.reservoir).toBe(0);
   });
 });

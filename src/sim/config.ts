@@ -51,6 +51,14 @@ export const KINDS: Record<Kind, KindSpec> = {
     name: 'Junction', cost: 12, costGrowth: 1.12, tierBase: 6, tierGrowth: 7, terrain: 'rock',
     storeCap: 6, outCap: 0, blurb: 'Two flows cross at right angles without mixing.',
   },
+  reservoir: {
+    name: 'Reservoir', cost: 40, costGrowth: 1.15, tierBase: 6, tierGrowth: 7, terrain: 'rock',
+    storeCap: 48, outCap: 0, blurb: 'A conduit with four times the room: absorbs bursts. One fluid.',
+  },
+  mender: {
+    name: 'Mender', cost: 120, costGrowth: 1.4, tierBase: 4, tierGrowth: 8, terrain: 'rock',
+    storeCap: 4, outCap: 0, blurb: 'Burns ichor to heal damaged structures within 2 tiles. Inline.',
+  },
   digester: {
     name: 'Digester', cost: 60, costGrowth: 1.25, tierBase: 5, tierGrowth: 9, terrain: 'rock',
     storeCap: 8, outCap: 4, blurb: '2 ichor → 1 bile.',
@@ -73,7 +81,7 @@ export const KINDS: Record<Kind, KindSpec> = {
   },
 };
 
-export const BUILDABLE: Kind[] = ['conduit', 'router', 'junction', 'tap', 'sporangium', 'digester', 'reactor', 'ward', 'cauterizer'];
+export const BUILDABLE: Kind[] = ['conduit', 'router', 'junction', 'reservoir', 'tap', 'sporangium', 'digester', 'reactor', 'ward', 'cauterizer', 'mender'];
 
 // --- Rates (tier multiplies by 2^tier) -------------------------------------------------
 export const TAP_RATE = 1.0;
@@ -119,6 +127,20 @@ export const ENTROPY_SEED_ROT = 0.25;
 export const CAUTERIZER_RADIUS = 2;
 export const CAUTERIZER_CLEANSE = 0.05; // rot/s per tile
 export const CAUTERIZER_BURN = 0.25; // bile/s
+
+/** Mender: heals 0.6%/s × 2^tier of integrity to every damaged, non-strained structure in a 5×5 area. */
+export const MENDER_RADIUS = 2;
+export const MENDER_HEAL = 0.006;
+export const MENDER_BURN = 0.1; // ichor/s × 1.5^tier, only while something is damaged
+
+/** A conduit carrying another fluid switches when the leftover is below this fraction of capacity (spilled). */
+export const FLUID_SWITCH_EPS = 0.02;
+/** Razing within this many seconds of building refunds 100% (undo). */
+export const REGRET_SECONDS = 10;
+/** Ruins (ghosts of broken structures) stay rebuildable this long. */
+export const RUIN_TTL = 600;
+/** Automatic rebuilding may spend at most this fraction of current essence per hour. */
+export const AUTO_REBUILD_BUDGET = 0.1;
 
 export const WARD_RADIUS = 2;
 export const WARD_DPS = 1;

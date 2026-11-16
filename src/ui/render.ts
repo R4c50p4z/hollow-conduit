@@ -1,4 +1,5 @@
-import { DX, DY, opposite, statusOf, type Building, type Dir, type SimState } from '../sim';
+import { canPlace, DX, DY, graceLeft, opposite, statusOf, type Building, type Dir, type Kind, type SimState } from '../sim';
+import { newBuilding } from '../sim/world';
 import { CAUTERIZER_RADIUS, PRESSURE_SAFE, WARD_RADIUS } from '../sim/config';
 import type { Overlay } from '../game/store';
 import { P, RES_COLOR, STATUS_COLOR } from './palette';
@@ -180,26 +181,45 @@ function drawBuilding(g: CanvasRenderingContext2D, s: SimState, x: number, y: nu
 
   switch (b.kind) {
     case 'conduit':
+    case 'reservoir':
     case 'router': {
       // Which sides connect: neighbours that feed us, our output, and (routers) every side we feed.
       const ins: Dir[] = [];
-      const outs: Dir[] = b.kind === 'conduit' ? [b.dir] : [];
+      const line = b.kind === 'conduit' || b.kind === 'reservoir';
+      const outs: Dir[] = line ? [b.dir] : [];
       for (let d = 0 as Dir; d < 4; d = (d + 1) as Dir) {
         const nx = x + DX[d], ny = y + DY[d];
         if (nx < 0 || ny < 0 || nx >= s.w || ny >= s.h) continue;
         const nb = s.tiles[ny * s.w + nx].building;
         if (!nb) continue;
         const feeds = nb.kind === 'junction' || (nb.kind !== 'heart' && nb.kind !== 'router' && nx + DX[nb.dir] === x && ny + DY[nb.dir] === y);
-        if (feeds && !(b.kind === 'conduit' && d === b.dir)) ins.push(d);
+        if (feeds && !(line && d === b.dir)) ins.push(d);
         else if (b.kind === 'router') outs.push(d);
       }
       const edge = (d: Dir, f = 0.5): [number, number] => [cx + DX[d] * T * f, cy + DY[d] * T * f];
       // An unfed conduit gets a short stub behind it so it still reads as a pipe end.
-      const back: [number, number] | null = b.kind === 'conduit' && !ins.length ? edge(opposite(b.dir), 0.2) : null;
+      const back: [number, number] | null = line && !ins.length ? edge(opposite(b.dir), 0.2) : null;
       const ends: [number, number][] = [...ins.map((d) => edge(d)), ...outs.map((d) => edge(d)), ...(back ? [back] : [])];
       pipe(g, cx, cy, ends, T);
 
-      if (b.kind === 'conduit') {
+      if (b.kind === 'reservoir') {
+        // A squat tank over the pipe, its fill showing how much buffer is left.
+        const w = T * 0.62, h = T * 0.62;
+        g.fillStyle = '#2a1f17';
+        g.strokeStyle = P.sepia;
+        g.lineWidth = 1.5;
+        g.beginPath();
+        g.roundRect(cx - w / 2, cy - h / 2, w, h, T * 0.12);
+        g.fill();
+        g.stroke();
+        if (b.pressure > 0.005) {
+          g.fillStyle = col;
+          g.globalAlpha = 0.75;
+          const fh = (h - 4) * Math.min(1, b.pressure);
+          g.fillRect(cx - w / 2 + 2, cy + h / 2 - 2 - fh, w - 4, fh);
+          g.globalAlpha = 1;
+        }
+      } else if (b.kind === 'conduit') {
         const fill = b.pressure;
         if (fill > 0.001) {
           // Fluid follows the bend: from each inlet through the centre to the outlet.
@@ -354,6 +374,26 @@ function drawBuilding(g: CanvasRenderingContext2D, s: SimState, x: number, y: nu
       g.globalAlpha = 1;
       break;
     }
+    case 'mender': {
+      tube(g, cx, cy, ex, ey, T);
+      g.fillStyle = '#2a1f17';
+      g.strokeStyle = P.ichor;
+      g.lineWidth = 1.5;
+      g.beginPath();
+      g.arc(cx, cy, T * 0.3, 0, Math.PI * 2);
+      g.fill();
+      g.stroke();
+      // A stitched cross: bright when it has ichor to burn.
+      g.strokeStyle = b.store[0] > 0.01 ? P.essence : P.dim;
+      g.lineWidth = T * 0.07;
+      g.beginPath();
+      g.moveTo(cx - T * 0.15, cy);
+      g.lineTo(cx + T * 0.15, cy);
+      g.moveTo(cx, cy - T * 0.15);
+      g.lineTo(cx, cy + T * 0.15);
+      g.stroke();
+      break;
+    }
     case 'ward': {
       tube(g, cx, cy, ex, ey, T);
       g.strokeStyle = P.spore;
@@ -430,6 +470,17 @@ function drawBuilding(g: CanvasRenderingContext2D, s: SimState, x: number, y: nu
       g.fill();
     }
   }
+  // Root cause: a blocked pump forcing strain into the full vessel ahead gets a pulsing ring.
+  if ((b.kind === 'tap' || b.kind === 'sporangium' || b.kind === 'digester' || b.kind === 'reactor') && b.enabled && b.pressure > PRESSURE_SAFE) {
+    const ahead = s.tiles[(y + DY[b.dir]) * s.w + (x + DX[b.dir])]?.building;
+    if (ahead?.strained && x + DX[b.dir] >= 0 && x + DX[b.dir] < s.w) {
+      g.strokeStyle = `rgba(255, 140, 40, ${0.55 + 0.45 * Math.sin(time * 6)})`;
+      g.lineWidth = 2.5;
+      g.beginPath();
+      g.arc(cx, cy, T * 0.46, 0, Math.PI * 2);
+      g.stroke();
+    }
+  }
   // Tier pips
   if (b.tier > 0) {
     g.fillStyle = P.bone;
@@ -479,6 +530,10 @@ export interface DrawOpts {
   selected: { x: number; y: number } | null;
   dpr: number;
   time: number;
+  /** Structure being placed: highlight every tile where it can go. */
+  tool?: Kind | null;
+  /** Tiles selected for upgrade-by-drag. */
+  upgradeSel?: number[];
 }
 
 export function draw(g: CanvasRenderingContext2D, s: SimState, L: Layout, o: DrawOpts) {
@@ -487,6 +542,29 @@ export function draw(g: CanvasRenderingContext2D, s: SimState, L: Layout, o: Dra
   g.fillStyle = P.void;
   g.fillRect(0, 0, L.w, L.h);
   g.drawImage(background(s, L, o.dpr), L.ox, L.oy, T * s.w, T * s.h);
+
+  // Wave telegraph: burrows throb red during the last 30 s before a wave.
+  if (graceLeft(s) <= 0 && !s.leeches.length && s.waveTimer < 30) {
+    const k = 1 - s.waveTimer / 30;
+    const pulse = 0.5 + 0.5 * Math.sin(o.time * (3 + 6 * k));
+    s.tiles.forEach((t, i) => {
+      if (t.terrain !== 'burrow') return;
+      const cx = L.ox + ((i % s.w) + 0.5) * T, cy = L.oy + (((i / s.w) | 0) + 0.5) * T;
+      const grd = g.createRadialGradient(cx, cy, 0, cx, cy, T * 0.9);
+      grd.addColorStop(0, `rgba(193, 31, 53, ${0.15 + 0.45 * k * pulse})`);
+      grd.addColorStop(1, 'rgba(193, 31, 53, 0)');
+      g.fillStyle = grd;
+      g.fillRect(cx - T, cy - T, 2 * T, 2 * T);
+    });
+  }
+
+  // Placement preview: where the chosen structure can go.
+  if (o.tool) {
+    g.strokeStyle = `rgba(240, 227, 196, ${0.25 + 0.15 * Math.sin(o.time * 4)})`;
+    g.lineWidth = 1.5;
+    for (let y = 0; y < s.h; y++)
+      for (let x = 0; x < s.w; x++) if (!canPlace(s, x, y, o.tool)) g.strokeRect(L.ox + x * T + 3, L.oy + y * T + 3, T - 6, T - 6);
+  }
 
   // Rot: blotches with tendrils
   for (let y = 0; y < s.h; y++) {
@@ -518,6 +596,31 @@ export function draw(g: CanvasRenderingContext2D, s: SimState, L: Layout, o: Dra
       const b = s.tiles[y * s.w + x].building;
       if (b) drawBuilding(g, s, x, y, b, L, o.time);
     }
+
+  // Plans: translucent ghosts of ruins and blueprint placements; red when they can't go there now.
+  for (const p of s.plans ?? []) {
+    const t = s.tiles[p.y * s.w + p.x];
+    if (t.building) continue;
+    const ghost = newBuilding(p.kind, p.dir);
+    ghost.tier = p.tier;
+    ghost.mode = p.mode;
+    g.globalAlpha = 0.32;
+    drawBuilding(g, s, p.x, p.y, ghost, L, o.time);
+    g.globalAlpha = 1;
+    const blocked = !!canPlace(s, p.x, p.y, p.kind);
+    g.strokeStyle = blocked ? 'rgba(224, 70, 90, 0.8)' : 'rgba(240, 227, 196, 0.55)';
+    g.setLineDash([4, 3]);
+    g.lineWidth = 1.5;
+    g.strokeRect(L.ox + p.x * T + 2, L.oy + p.y * T + 2, T - 4, T - 4);
+    g.setLineDash([]);
+  }
+
+  // Upgrade-by-drag selection
+  if (o.upgradeSel?.length) {
+    g.strokeStyle = P.vitriol;
+    g.lineWidth = 2;
+    for (const i of o.upgradeSel) g.strokeRect(L.ox + (i % s.w) * T + 2, L.oy + ((i / s.w) | 0) * T + 2, T - 4, T - 4);
+  }
 
   // Leeches
   for (const l of s.leeches) {

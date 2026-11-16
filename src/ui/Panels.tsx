@@ -147,6 +147,7 @@ export function SettingsPanel() {
           </button>
         </div>
         <GraceSetting />
+        <PlansSetting />
         <h3>{t('settings.tutorial')}</h3>
         <div className="seg">
           <button className={`act ${tutorial ? 'on' : ''}`} onClick={() => setTutorial(!tutorial)}>
@@ -218,6 +219,49 @@ function GraceSetting() {
       ) : (
         <p className="sub">{t('settings.graceOver')}</p>
       )}
+    </>
+  );
+}
+
+function PlansSetting() {
+  useUI((u) => u.frame);
+  const t = useT();
+  const say = useUI((u) => u.say);
+  const s = host.state;
+  const pieces = s.tiles.filter((tt) => tt.building && tt.building.kind !== 'heart').length;
+  const pending = (s.plans ?? []).length;
+  const bp = s.blueprint?.length ?? 0;
+  return (
+    <>
+      <h3>{t('settings.plans')}</h3>
+      <div className="seg col">
+        <button className={`act ${s.autoRebuild ? 'on' : ''}`} onClick={() => host.dispatch({ t: 'setAutoRebuild', on: !s.autoRebuild })}>
+          {s.autoRebuild ? '✓' : '—'} {t('settings.autoRebuild')}
+        </button>
+        <p className="sub">{t('settings.autoRebuildNote')}</p>
+        <button
+          className="act"
+          disabled={!pieces}
+          onClick={() => {
+            host.dispatch({ t: 'saveBlueprint' });
+            say(t('settings.bpSaved'));
+          }}
+        >
+          {t('settings.bpSave', { n: pieces })}
+        </button>
+        {bp > 0 ? (
+          <button className="act" onClick={() => host.dispatch({ t: 'applyBlueprint' })}>
+            {t('settings.bpApply', { n: bp })}
+          </button>
+        ) : (
+          <p className="sub">{t('settings.bpNone')}</p>
+        )}
+        {pending > 0 && (
+          <button className="act danger" onClick={() => host.dispatch({ t: 'clearPlans' })}>
+            {t('settings.plansClear', { n: pending })}
+          </button>
+        )}
+      </div>
     </>
   );
 }

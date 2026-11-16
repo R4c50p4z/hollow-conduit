@@ -4,6 +4,7 @@ import { audio } from '../game/audio';
 import { haptic } from '../game/native';
 import { useUI } from '../game/store';
 import { reasonText } from '../i18n/game';
+import { routePath } from './lib/path';
 import type { Dir } from '../sim';
 import { computeLayout, draw, type Layout } from './render';
 
@@ -49,6 +50,8 @@ export function Board() {
         selected: ui.selected,
         dpr: Math.min(3, window.devicePixelRatio || 1),
         time: now / 1000,
+        tool: ui.tool,
+        upgradeSel: ui.upgradeMode ? ui.upgradeSel : undefined,
       });
     };
     raf = requestAnimationFrame(frame);
@@ -59,7 +62,7 @@ export function Board() {
   }, []);
 
   // --- input --------------------------------------------------------------------------------
-  const drag = useRef<{ last: { x: number; y: number } | null; moved: boolean; built: boolean } | null>(null);
+  const drag = useRef<{ last: { x: number; y: number } | null; moved: boolean; built: boolean; cells: number[] } | null>(null);
 
   const tileFrom = (e: React.PointerEvent) => {
     const L = layout.current!;
@@ -78,6 +81,15 @@ export function Board() {
     }
   };
 
+  /** Upgrade-by-drag: add a structure under the finger to the selection (once). */
+  const selectForUpgrade = (p: { x: number; y: number }) => {
+    const s = host.state;
+    const i = p.y * s.w + p.x;
+    if (!s.tiles[i].building) return;
+    const sel = useUI.getState().upgradeSel;
+    if (!sel.includes(i)) useUI.setState({ upgradeSel: [...sel, i] });
+  };
+
   const onDown = (e: React.PointerEvent) => {
     const p = tileFrom(e);
     if (!p) return;
@@ -91,46 +103,76 @@ export function Board() {
       audio.play('strike');
       return;
     }
-    drag.current = { last: p, moved: false, built: false };
+    drag.current = { last: p, moved: false, built: false, cells: [] };
+    if (ui.upgradeMode) {
+      selectForUpgrade(p);
+      drag.current.built = true; // consumed: don't open the inspector
+      return;
+    }
     const t = s.tiles[p.y * s.w + p.x];
     if (ui.tool && !t.building) {
       const r = host.dispatch({ t: 'build', ...p, kind: ui.tool, dir: ui.dir });
       if (!r.ok) ui.say(reasonText(r));
       else {
         drag.current.built = true;
+        drag.current.cells.push(p.y * s.w + p.x);
         audio.play('build');
       }
     }
   };
 
-  const onMove = (e: React.PointerEvent) => {
-    const d = drag.current;
+  /** Lay one conduit step from d.last into the orthogonally adjacent tile p. Returns false to stop. */
+  const step = (d: NonNullable<typeof drag.current>, p: { x: number; y: number }) => {
     const ui = useUI.getState();
-    if (!d || !d.last || ui.tool !== 'conduit') return;
-    const p = tileFrom(e);
-    if (!p || (p.x === d.last.x && p.y === d.last.y)) return;
-    const dx = p.x - d.last.x, dy = p.y - d.last.y;
-    if (Math.abs(dx) + Math.abs(dy) !== 1) return; // only orthogonal steps
+    const s = host.state;
+    const last = d.last!;
+    const dx = p.x - last.x, dy = p.y - last.y;
     const dir: Dir = dy === -1 ? 0 : dx === 1 ? 1 : dy === 1 ? 2 : 3;
-    d.moved = true;
-    const lastB = host.state.tiles[d.last.y * host.state.w + d.last.x].building;
-    if (lastB?.kind === 'conduit') setDir(d.last.x, d.last.y, dir);
-    const t = host.state.tiles[p.y * host.state.w + p.x];
+    const lastB = s.tiles[last.y * s.w + last.x].building;
+    if (lastB?.kind === 'conduit') setDir(last.x, last.y, dir);
+    const t = s.tiles[p.y * s.w + p.x];
     if (!t.building) {
       const r = host.dispatch({ t: 'build', ...p, kind: 'conduit', dir });
       if (!r.ok) {
         ui.say(reasonText(r));
         d.last = null;
-        return;
+        return false;
       }
+      d.cells.push(p.y * s.w + p.x);
       useUI.setState({ dir });
     }
     d.last = p;
+    return true;
+  };
+
+  const onMove = (e: React.PointerEvent) => {
+    const d = drag.current;
+    const ui = useUI.getState();
+    if (!d) return;
+    const p = tileFrom(e);
+    if (!p) return;
+    if (ui.upgradeMode) {
+      selectForUpgrade(p);
+      return;
+    }
+    if (!d.last || ui.tool !== 'conduit') return;
+    if (p.x === d.last.x && p.y === d.last.y) return;
+    d.moved = true;
+    const dist = Math.abs(p.x - d.last.x) + Math.abs(p.y - d.last.y);
+    if (dist === 1) {
+      step(d, p);
+      return;
+    }
+    // The finger jumped: fill the gap along the cheapest path (few turns, avoids veins and beds).
+    const path = routePath(host.state, d.last, p);
+    if (!path) return;
+    for (const q of path) if (!step(d, q)) return;
   };
 
   const onUp = (e: React.PointerEvent) => {
     const d = drag.current;
     drag.current = null;
+    if (d?.cells.length) useUI.setState({ lastStroke: { cells: d.cells, at: Date.now() } });
     if (!d || d.moved || d.built) return;
     const p = tileFrom(e);
     if (!p) return;

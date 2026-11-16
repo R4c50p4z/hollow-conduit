@@ -176,6 +176,16 @@ tiempo:
 - Toca la pieza y su ficha te dice **el motivo exacto**: «Bloqueado: delante no hay nada», «delante hay otro fluido»,
   «lo de delante está lleno», «Le falta: esporas», «Lleno en reposo (seguro)»…
 
+### Construir más rápido
+- **Tendido asistido:** con Conducto, si el dedo salta casillas, el hueco se rellena por el mejor camino (pocos giros y
+  sin pisar vetas ni lechos).
+- **↶ Deshacer:** durante 10 s tras construir, quita lo último y te devuelve todo.
+- **⇧ Mejorar arrastrando:** pulsa ⇧, pasa el dedo por las piezas que quieras subir de nivel, mira el coste total y
+  pulsa «Mejorar todo».
+- Al elegir una estructura, la caverna **marca dónde se puede colocar** y una franja abajo explica **qué hace con sus
+  cifras reales** (y avisa si la proporción da sobrantes, como Digestor y Matriz).
+- **Ruinas:** lo roto deja un fantasma; tócalo para reconstruirlo igual, con su nivel.
+
 ### ¿Aguanta sin mí?
 En **▤ → Ahora → Estabilidad** está el botón **«¿Aguanta sin mí? Simular 30 min»**. Copia tu caverna y la deja correr
 30 minutos sin tocar nada y **con sanguijuelas** (aunque estés en el periodo de gracia, para probar tus defensas). Te dice

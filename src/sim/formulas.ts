@@ -70,7 +70,7 @@ export const craftRate = (kind: 'digester' | 'reactor', tier: number, rot: numbe
 
 /** Buffer capacities grow with throughput so that "seconds of buffering" stays constant per tier. */
 export const storeCap = (kind: Kind, tier: number, m: Mutations) =>
-  C.KINDS[kind].storeCap * tierMul(tier) * (kind === 'conduit' || kind === 'router' || kind === 'junction' ? Math.pow(1.5, m.vascular) : 1);
+  C.KINDS[kind].storeCap * tierMul(tier) * (kind === 'conduit' || kind === 'router' || kind === 'junction' || kind === 'reservoir' ? Math.pow(1.5, m.vascular) : 1);
 export const outCap = (kind: Kind, tier: number) => C.KINDS[kind].outCap * tierMul(tier);
 
 /** Integrity loss per second from pressure (fill ∈ [0,1]) and rot. */

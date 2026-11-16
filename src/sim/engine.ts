@@ -2,6 +2,7 @@ import Decimal from 'break_eternity.js';
 import * as C from './config';
 import * as F from './formulas';
 import { checkAchievements } from './achievements';
+import { addRuin, processPlans } from './plans';
 import { rand, randInt } from './rng';
 import { count, countE, countKind, countRes, tickStats } from './stats';
 import { DX, DY, R, opposite, type Building, type Buf, type Dir, type Leech, type RuptureCause, type SimState } from './types';
@@ -31,12 +32,15 @@ export function tick(s: SimState, dt: number) {
   rotField(s, dt);
   parasites(s, dt);
   tickStats(s, dt);
-  if (Math.floor(s.time) !== prevSecond) checkAchievements(s);
+  if (Math.floor(s.time) !== prevSecond) {
+    checkAchievements(s);
+    processPlans(s);
+  }
 }
 
 const sum = (b: number[]) => b[0] + b[1] + b[2] + b[3];
 /** The resource each inline sink burns. */
-const FUEL = { ward: R.spore, cauterizer: R.bile } as const;
+const FUEL = { ward: R.spore, cauterizer: R.bile, mender: R.ichor } as const;
 
 // --- 1. Production -----------------------------------------------------------------------
 
@@ -96,6 +100,23 @@ function produce(s: SimState, dt: number): Float64Array {
         count(s, 'rotScoured', removed);
         break;
       }
+      case 'mender': {
+        const x = i % s.w, y = (i / s.w) | 0;
+        const targets: Building[] = [];
+        forRadius(s, x, y, C.MENDER_RADIUS, (tt) => {
+          const nb = tt.building;
+          if (nb && nb.kind !== 'heart' && !nb.strained && nb.integrity < 1) targets.push(nb);
+        });
+        if (!targets.length) break;
+        const need = C.MENDER_BURN * Math.pow(1.5, b.tier) * dt;
+        const frac = Math.min(1, b.store[R.ichor] / need);
+        if (frac <= 0) break;
+        b.store[R.ichor] -= need * frac;
+        countRes(s, 'burned', R.ichor, need * frac);
+        const heal = C.MENDER_HEAL * F.tierMul(b.tier) * frac * dt;
+        for (const nb of targets) nb.integrity = Math.min(1, nb.integrity + heal);
+        break;
+      }
       // ward handled in parasites(); conduit/router/junction/heart have no production
     }
   }
@@ -104,10 +125,23 @@ function produce(s: SimState, dt: number): Float64Array {
 
 // --- 2. Transfer -------------------------------------------------------------------------
 
-const singleFluidSpace = (store: Buf, incoming: Buf, r: number, cap: number) => {
-  for (let k = 0; k < 4; k++) if (k !== r && store[k] + incoming[k] > 1e-9) return 0;
+/**
+ * Room for fluid r in a one-fluid vessel. Another fluid blocks it, unless only a residue below
+ * FLUID_SWITCH_EPS of capacity is left: then the residue is spilled and the vessel switches.
+ */
+function singleFluidSpace(s: SimState, store: Buf, incoming: Buf, r: number, cap: number): number {
+  let other = 0;
+  for (let k = 0; k < 4; k++) if (k !== r) other += store[k] + incoming[k];
+  if (other > C.FLUID_SWITCH_EPS * cap) return 0;
+  if (other > 0)
+    for (let k = 0; k < 4; k++)
+      if (k !== r && store[k] + incoming[k] > 0) {
+        countRes(s, 'spilled', k, store[k] + incoming[k]);
+        store[k] = 0;
+        incoming[k] = 0;
+      }
   return cap - sum(store) - sum(incoming);
-};
+}
 
 /** How much of resource r `target` will take from a source located in direction `fromDir` (relative to the target). */
 function accept(s: SimState, tx: number, ty: number, r: number, amount: number, fromDir: Dir): number {
@@ -117,16 +151,17 @@ function accept(s: SimState, tx: number, ty: number, r: number, amount: number, 
   const m = s.mutations;
   let space = 0;
   switch (b.kind) {
-    case 'conduit': {
+    case 'conduit':
+    case 'reservoir': {
       if (!b.enabled) return 0; // sealed valve
       if (b.dir === fromDir) return 0; // never accept from its own output face
-      space = singleFluidSpace(b.store, b.incoming, r, F.storeCap('conduit', b.tier, m));
+      space = singleFluidSpace(s, b.store, b.incoming, r, F.storeCap(b.kind, b.tier, m));
       break;
     }
     case 'junction': {
       if (!b.enabled || !b.lanes || !b.lanesIn) return 0;
       const lane = opposite(fromDir); // keeps travelling the way it was going
-      const got = Math.max(0, Math.min(amount, singleFluidSpace(b.lanes[lane], b.lanesIn[lane], r, F.storeCap('junction', b.tier, m))));
+      const got = Math.max(0, Math.min(amount, singleFluidSpace(s, b.lanes[lane], b.lanesIn[lane], r, F.storeCap('junction', b.tier, m))));
       b.lanesIn[lane][r] += got;
       return got;
     }
@@ -141,6 +176,7 @@ function accept(s: SimState, tx: number, ty: number, r: number, amount: number, 
       break;
     case 'cauterizer':
     case 'ward':
+    case 'mender':
       // Inline sinks: keep a reserve of their fuel and let the surplus pass through (see transfer()).
       if (r !== FUEL[b.kind]) return 0;
       space = 2 * F.storeCap(b.kind, b.tier, m) - b.store[r] - b.incoming[r];
@@ -188,7 +224,8 @@ function transfer(s: SimState, dt: number, pushed: Float64Array) {
     if (!b) continue;
     const x = i % s.w, y = (i / s.w) | 0;
     switch (b.kind) {
-      case 'conduit': {
+      case 'conduit':
+      case 'reservoir': {
         if (!b.enabled) break;
         const budget = F.conduitThroughput('conduit', b.tier, t.rot, m) * dt;
         pushed[i] += pushBuf(s, b.store, budget, x + DX[b.dir], y + DY[b.dir], opposite(b.dir));
@@ -231,7 +268,8 @@ function transfer(s: SimState, dt: number, pushed: Float64Array) {
         break;
       }
       case 'ward':
-      case 'cauterizer': {
+      case 'cauterizer':
+      case 'mender': {
         const r = FUEL[b.kind];
         const surplus = b.store[r] - F.storeCap(b.kind, b.tier, m);
         if (surplus <= 1e-9) break;
@@ -297,6 +335,7 @@ export function fillOf(s: SimState, b: Building): number {
   switch (b.kind) {
     case 'conduit':
     case 'router':
+    case 'reservoir':
       return sum(b.store) / F.storeCap(b.kind, b.tier, m);
     case 'junction': {
       if (!b.lanes) return 0;
@@ -315,7 +354,7 @@ export function fillOf(s: SimState, b: Building): number {
 }
 
 const isPump = (k: string) => k === 'tap' || k === 'sporangium' || k === 'digester' || k === 'reactor';
-const isVessel = (k: string) => k === 'conduit' || k === 'router' || k === 'junction';
+const isVessel = (k: string) => k === 'conduit' || k === 'router' || k === 'junction' || k === 'reservoir';
 
 /**
  * Strain propagation. Pressure is born at a *blocked pump* (a producer or processor whose output
@@ -346,7 +385,7 @@ function computeStrain(s: SimState) {
     const i = queue.pop()!;
     const b = s.tiles[i].building!;
     const x = i % s.w, y = (i / s.w) | 0;
-    if (b.kind === 'conduit') mark(x + DX[b.dir], y + DY[b.dir]);
+    if (b.kind === 'conduit' || b.kind === 'reservoir') mark(x + DX[b.dir], y + DY[b.dir]);
     else if (b.kind === 'junction' && b.lanes) {
       const cap = F.storeCap('junction', b.tier, s.mutations);
       for (let d = 0; d < 4; d++) if (sum(b.lanes[d]) / cap > C.PRESSURE_SAFE) mark(x + DX[d], y + DY[d]);
@@ -408,6 +447,7 @@ export function rupture(s: SimState, i: number, cause: RuptureCause) {
   s.stats.lastRuptureAt = s.time;
   countKind(s, 'rupturesByKind', b.kind);
   s.stats.run.rupturesByCause[cause]++;
+  addRuin(s, x, y, b, cause);
   s.stats.life.rupturesByCause[cause]++;
   pushEvent(s, { kind: 'rupture', params: { kind: b.kind, cause }, x, y });
 }

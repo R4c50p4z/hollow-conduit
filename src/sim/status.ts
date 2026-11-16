@@ -29,7 +29,7 @@ export interface Status {
 }
 
 const sum = (b: number[]) => b[0] + b[1] + b[2] + b[3];
-const FUEL: Partial<Record<Building['kind'], number>> = { ward: R.spore, cauterizer: R.bile };
+const FUEL: Partial<Record<Building['kind'], number>> = { ward: R.spore, cauterizer: R.bile, mender: R.ichor };
 
 /** Why can't (x,y) push resource r forward? (Read-only mirror of the engine's accept rules.) */
 function whyBlocked(s: SimState, x: number, y: number, b: Building, r: number): BlockReason {
@@ -37,7 +37,7 @@ function whyBlocked(s: SimState, x: number, y: number, b: Building, r: number): 
   const nb = t?.building;
   if (!nb) return 'deadEnd';
   const from = opposite(b.dir);
-  if (nb.kind === 'conduit') {
+  if (nb.kind === 'conduit' || nb.kind === 'reservoir') {
     if (nb.dir === from || !nb.enabled) return 'refuses';
     if (nb.store.some((v, k) => k !== r && v > 1e-6)) return 'wrongFluid';
     return 'full';
@@ -48,7 +48,7 @@ function whyBlocked(s: SimState, x: number, y: number, b: Building, r: number): 
     return 'full';
   }
   if (nb.kind === 'digester' || nb.kind === 'reactor') return C.RECIPES[nb.kind].in[r] ? 'full' : 'refuses';
-  if (nb.kind === 'ward' || nb.kind === 'cauterizer') return FUEL[nb.kind] === r ? 'full' : 'refuses';
+  if (nb.kind === 'ward' || nb.kind === 'cauterizer' || nb.kind === 'mender') return FUEL[nb.kind] === r ? 'full' : 'refuses';
   if (nb.kind === 'tap' || nb.kind === 'sporangium') return 'refuses';
   return 'full';
 }
@@ -73,7 +73,8 @@ export function statusOf(s: SimState, x: number, y: number): Status | null {
       return { code: 'working' };
     }
     case 'ward':
-    case 'cauterizer': {
+    case 'cauterizer':
+    case 'mender': {
       const r = FUEL[b.kind]!;
       return b.store[r] > 0.01 ? { code: 'working' } : { code: 'noInput', missing: [r] };
     }

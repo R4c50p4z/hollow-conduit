@@ -4,7 +4,8 @@ import { host } from '../game/host';
 import { useUI } from '../game/store';
 import { useT } from '../i18n';
 import { kindBlurb, kindName, reasonText, resName, terrainName } from '../i18n/game';
-import { cleanseCost, contentsOf, Formulas as F, repairCost, statusOf, upgradeCost, type Command } from '../sim';
+import { cleanseCost, contentsOf, Formulas as F, planBlocked, planCost, repairCost, statusOf, upgradeCost, type Building, type Command, type SimState } from '../sim';
+import { RUIN_TTL } from '../sim/config';
 import { REFUND_FRACTION } from '../sim/config';
 import { fmt, fmtDuration, int, num } from './format';
 import { RES_COLOR, STATUS_COLOR } from './palette';
@@ -51,6 +52,60 @@ function StatusLine({ x, y }: { x: number; y: number }) {
   );
 }
 
+/** What it could make vs what actually leaves it (Mindustry shows neither; players ask for it). */
+function RateLine({ s, b, rot }: { s: SimState; b: Building; rot: number }) {
+  const t = useT();
+  const m = s.mutations;
+  const tile = s.tiles.find((tt) => tt.building === b)!;
+  let line: string | null = null;
+  if (b.kind === 'tap' || b.kind === 'sporangium')
+    line = t('insp.rates', { a: num(F.extractionRate(b.kind, b.tier, tile.richness, rot, m), 2), b: num(b.flowEma, 2) });
+  else if (b.kind === 'digester' || b.kind === 'reactor')
+    // Both recipes yield one unit (bile / vitriol) per craft.
+    line = t('insp.rates', { a: num(F.craftRate(b.kind, b.tier, rot, m), 2), b: num(b.flowEma, 2) });
+  else if (b.kind === 'conduit' || b.kind === 'reservoir' || b.kind === 'junction' || b.kind === 'router')
+    line = t('insp.flow', { a: num(F.conduitThroughput(b.kind === 'router' ? 'router' : 'conduit', b.tier, rot, m), 1), b: num(b.flowEma, 2) });
+  return line ? <p className="sub rate-line">{line}</p> : null;
+}
+
+/** An empty tile with a ruin or blueprint plan on it: what it was, cost, build now / discard. */
+function PlanView({ x, y }: { x: number; y: number }) {
+  const t = useT();
+  const say = useUI((u) => u.say);
+  const s = host.state;
+  const p = (s.plans ?? []).find((q) => q.x === x && q.y === y);
+  if (!p) return null;
+  const cost = planCost(s, p);
+  const blocked = planBlocked(s, p);
+  const go = (c: Command) => {
+    const r = host.dispatch(c);
+    if (!r.ok) say(reasonText(r));
+  };
+  return (
+    <div className="plan-view">
+      <p className="status-line">
+        <i style={{ background: blocked ? '#e0465a' : '#c9a24a' }} />
+        {t(p.src === 'ruin' ? 'plan.ruin' : 'plan.blueprint', { kind: kindName(p.kind) })}
+        {p.tier > 0 ? ` · ${t('insp.tier', { tier: p.tier })}` : ''}
+      </p>
+      <p className="sub">
+        {p.src === 'ruin'
+          ? t('plan.cause', { cause: t(`st.cause.${p.cause ?? 'pressure'}`), time: fmtDuration(Math.max(0, RUIN_TTL - (s.time - p.at))) })
+          : t('plan.queued')}
+      </p>
+      {blocked && <p className="sub bad-text">{t('plan.blocked', { why: reasonText(blocked) })}</p>}
+      <div className="actions">
+        <Btn onPress={() => go({ t: 'buildPlan', x, y })} cost={cost} poor={s.essence.lt(cost) || !!blocked}>
+          {t('plan.build')}
+        </Btn>
+        <Btn onPress={() => go({ t: 'dropPlan', x, y })} danger>
+          {t('plan.drop')}
+        </Btn>
+      </div>
+    </div>
+  );
+}
+
 export function Inspector({ x, y }: { x: number; y: number }) {
   useUI((u) => u.frame);
   const t = useT();
@@ -70,7 +125,6 @@ export function Inspector({ x, y }: { x: number; y: number }) {
   const sub: string[] = [];
   if (b) sub.push(t('insp.tier', { tier: b.tier }));
   if (tile.terrain === 'vein' || tile.terrain === 'sporebed') sub.push(t('insp.richness', { v: num(tile.richness, 2) }));
-  if (b && !isHeart) sub.push(t('insp.out', { v: num(b.flowEma, 2) }));
   if (b && (b.kind === 'digester' || b.kind === 'reactor')) sub.push(t('insp.crafts', { n: int(b.progress) }));
   if (b && !isHeart && b.bornAt !== undefined) sub.push(t('insp.age', { time: fmtDuration(s.time - b.bornAt) }));
   if (isHeart) sub.push(t('insp.intakeCap', { v: fmt(F.heartIntakeCap(b!.tier)) }));
@@ -91,6 +145,9 @@ export function Inspector({ x, y }: { x: number; y: number }) {
       </div>
 
       {b && <StatusLine x={x} y={y} />}
+      {b && !isHeart && <RateLine s={s} b={b} rot={tile.rot} />}
+      {b?.kind === 'router' && b.mode === 'priority' && <p className="sub">{t('insp.prioritySide', { dir: ARROWS[b.dir] })}</p>}
+      {!b && <PlanView x={x} y={y} />}
       {b && !isHeart && (
         <>
           <Bar v={b.integrity} color={b.integrity < 0.3 ? '#ff3b3b' : '#d9cfbf'} label={t('insp.integrity')} />

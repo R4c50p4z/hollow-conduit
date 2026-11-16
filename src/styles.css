@@ -246,3 +246,25 @@ th:first-child, td:first-child { text-align: left; }
 .act:disabled { opacity: 0.35; }
 /* Visible press feedback so a tap is obviously registered. */
 .act:active, .tool:active, .sq:active, .chip:active, .mut:active, .tabs button:active { transform: scale(0.96); filter: brightness(1.4); }
+
+/* --- Safe areas: keep everything clear of the status bar and the home indicator ------ */
+/* In the installed app the page runs under the iOS status bar (viewport-fit=cover), so
+   panels must stop below env(safe-area-inset-top) plus a small margin, and above the home bar. */
+:root { --edge-gap: 10px; }
+.app {
+  padding-top: calc(env(safe-area-inset-top, 0px) + var(--edge-gap));
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--edge-gap));
+}
+.modal {
+  padding-top: calc(env(safe-area-inset-top, 0px) + var(--edge-gap) + 8px);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--edge-gap));
+}
+/* The sheet may grow only up to the padded area, never under the status bar. */
+.modal .sheet {
+  max-height: 100%;
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  padding-bottom: 14px;
+}
+/* Big enough to hit with a thumb (Apple HIG: 44pt). */
+.x { min-width: 44px; min-height: 44px; display: inline-grid; place-items: center; font-size: 18px; margin: -8px -10px 0 0; }

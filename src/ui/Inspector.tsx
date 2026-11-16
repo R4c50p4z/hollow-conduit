@@ -19,6 +19,20 @@ const Bar = ({ v, color, label }: { v: number; color: string; label: string }) =
   </div>
 );
 
+/**
+ * Defined at module level on purpose: the inspector re-renders 8×/s, and a component declared
+ * inside it would be a *new type* each render, so React would remount the <button> mid-tap and
+ * swallow most touches.
+ */
+function Btn({ onPress, children, cost, poor, danger }: { onPress: () => void; children: ReactNode; cost?: Decimal; poor?: boolean; danger?: boolean }) {
+  return (
+    <button className={`act ${danger ? 'danger' : ''} ${poor ? 'poor' : ''}`} onClick={onPress}>
+      {children}
+      {cost && <small>{fmt(cost)}</small>}
+    </button>
+  );
+}
+
 export function Inspector({ x, y }: { x: number; y: number }) {
   useUI((u) => u.frame);
   const t = useT();
@@ -31,12 +45,7 @@ export function Inspector({ x, y }: { x: number; y: number }) {
     if (!r.ok) say(reasonText(r));
     return r.ok;
   };
-  const Btn = ({ c, children, cost, danger }: { c: Command; children: ReactNode; cost?: Decimal; danger?: boolean }) => (
-    <button className={`act ${danger ? 'danger' : ''} ${cost && s.essence.lt(cost) ? 'poor' : ''}`} onClick={() => run(c)}>
-      {children}
-      {cost && <small>{fmt(cost)}</small>}
-    </button>
-  );
+  const act = (c: Command, cost?: Decimal) => ({ onPress: () => run(c), cost, poor: !!cost && s.essence.lt(cost) });
 
   const contents = b ? contentsOf(b) : [0, 0, 0, 0];
   const isHeart = b?.kind === 'heart';
@@ -85,24 +94,24 @@ export function Inspector({ x, y }: { x: number; y: number }) {
 
       <div className="actions">
         {b && (
-          <Btn c={{ t: 'upgrade', x, y }} cost={upgradeCost(s, x, y)!}>
+          <Btn {...act({ t: 'upgrade', x, y }, upgradeCost(s, x, y)!)}>
             {t('insp.upgrade')}
           </Btn>
         )}
-        {b && !isHeart && b.kind !== 'junction' && <Btn c={{ t: 'rotate', x, y }}>{t('insp.rotate')}</Btn>}
+        {b && !isHeart && b.kind !== 'junction' && <Btn {...act({ t: 'rotate', x, y })}>{t('insp.rotate')}</Btn>}
         {b && !isHeart && b.integrity < 0.999 && (
-          <Btn c={{ t: 'repair', x, y }} cost={repairCost(s, x, y)}>
+          <Btn {...act({ t: 'repair', x, y }, repairCost(s, x, y))}>
             {t('insp.mend')}
           </Btn>
         )}
-        {b && !isHeart && <Btn c={{ t: 'toggle', x, y }}>{b.enabled ? t('insp.seal') : t('insp.unseal')}</Btn>}
+        {b && !isHeart && <Btn {...act({ t: 'toggle', x, y })}>{b.enabled ? t('insp.seal') : t('insp.unseal')}</Btn>}
         {b && !isHeart && (
-          <Btn c={{ t: 'vent', x, y }} danger>
+          <Btn {...act({ t: 'vent', x, y })} danger>
             {t('insp.vent')}
           </Btn>
         )}
         {tile.rot > 0.01 && (
-          <Btn c={{ t: 'cleanse', x, y }} cost={cleanseCost(s)}>
+          <Btn {...act({ t: 'cleanse', x, y }, cleanseCost(s))}>
             {t('insp.cleanse')}
           </Btn>
         )}

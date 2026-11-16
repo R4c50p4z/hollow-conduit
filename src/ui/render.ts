@@ -1,4 +1,4 @@
-import { DX, DY, type Building, type SimState } from '../sim';
+import { DX, DY, opposite, type Building, type Dir, type SimState } from '../sim';
 import { CAUTERIZER_RADIUS, PRESSURE_SAFE, WARD_RADIUS } from '../sim/config';
 import type { Overlay } from '../game/store';
 import { P, RES_COLOR } from './palette';
@@ -138,6 +138,31 @@ function tube(g: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y
   g.stroke();
 }
 
+/**
+ * A pipe from the tile centre to several edge points, drawn as ONE shape: all wall strokes first,
+ * then all bore strokes, with a round knuckle at the centre, so bends and T-joins have no seams
+ * or overhanging stubs.
+ */
+function pipe(g: CanvasRenderingContext2D, cx: number, cy: number, ends: [number, number][], T: number) {
+  const pass = (color: string, w: number) => {
+    g.strokeStyle = color;
+    g.fillStyle = color;
+    g.lineWidth = w;
+    g.lineCap = 'butt';
+    g.beginPath();
+    for (const [x1, y1] of ends) {
+      g.moveTo(cx, cy);
+      g.lineTo(x1, y1);
+    }
+    g.stroke();
+    g.beginPath();
+    g.arc(cx, cy, w / 2, 0, Math.PI * 2);
+    g.fill();
+  };
+  pass('#3a2f25', T * 0.34);
+  pass(P.ink, T * 0.24);
+}
+
 function drawBuilding(g: CanvasRenderingContext2D, s: SimState, x: number, y: number, b: Building, L: Layout, time: number) {
   const T = L.T;
   const cx = L.ox + (x + 0.5) * T, cy = L.oy + (y + 0.5) * T;
@@ -156,29 +181,41 @@ function drawBuilding(g: CanvasRenderingContext2D, s: SimState, x: number, y: nu
   switch (b.kind) {
     case 'conduit':
     case 'router': {
-      // Draw inbound stubs from neighbours that feed us, so lines read as connected.
-      for (let d = 0; d < 4; d++) {
+      // Which sides connect: neighbours that feed us, our output, and (routers) every side we feed.
+      const ins: Dir[] = [];
+      const outs: Dir[] = b.kind === 'conduit' ? [b.dir] : [];
+      for (let d = 0 as Dir; d < 4; d = (d + 1) as Dir) {
         const nx = x + DX[d], ny = y + DY[d];
         if (nx < 0 || ny < 0 || nx >= s.w || ny >= s.h) continue;
         const nb = s.tiles[ny * s.w + nx].building;
-        const feeds =
-          nb && (nb.kind === 'junction' || (nb.kind !== 'heart' && nb.kind !== 'router' && nx + DX[nb.dir] === x && ny + DY[nb.dir] === y));
-        const routerOut = b.kind === 'router' && nb && !feeds;
-        if (feeds || routerOut) tube(g, cx, cy, cx + DX[d] * T * 0.5, cy + DY[d] * T * 0.5, T);
+        if (!nb) continue;
+        const feeds = nb.kind === 'junction' || (nb.kind !== 'heart' && nb.kind !== 'router' && nx + DX[nb.dir] === x && ny + DY[nb.dir] === y);
+        if (feeds && !(b.kind === 'conduit' && d === b.dir)) ins.push(d);
+        else if (b.kind === 'router') outs.push(d);
       }
+      const edge = (d: Dir, f = 0.5): [number, number] => [cx + DX[d] * T * f, cy + DY[d] * T * f];
+      // An unfed conduit gets a short stub behind it so it still reads as a pipe end.
+      const back: [number, number] | null = b.kind === 'conduit' && !ins.length ? edge(opposite(b.dir), 0.2) : null;
+      const ends: [number, number][] = [...ins.map((d) => edge(d)), ...outs.map((d) => edge(d)), ...(back ? [back] : [])];
+      pipe(g, cx, cy, ends, T);
+
       if (b.kind === 'conduit') {
-        tube(g, cx, cy, ex, ey, T);
-        tube(g, cx, cy, cx - DX[b.dir] * T * 0.2, cy - DY[b.dir] * T * 0.2, T);
         const fill = b.pressure;
         if (fill > 0.001) {
+          // Fluid follows the bend: from each inlet through the centre to the outlet.
           g.strokeStyle = col;
           g.globalAlpha = 0.35 + 0.65 * Math.min(1, fill * 3);
           g.lineWidth = T * (0.06 + 0.14 * Math.min(1, fill));
+          g.lineJoin = 'round';
           g.setLineDash([T * 0.12, T * 0.14]);
           g.lineDashOffset = -time * T * Math.min(3, 0.3 + b.flowEma * 0.3);
           g.beginPath();
-          g.moveTo(cx - DX[b.dir] * T * 0.5, cy - DY[b.dir] * T * 0.5);
-          g.lineTo(ex, ey);
+          const sources = ins.length ? ins.map((d) => edge(d)) : [back!];
+          for (const [sx, sy] of sources) {
+            g.moveTo(sx, sy);
+            g.lineTo(cx, cy);
+            g.lineTo(ex, ey);
+          }
           g.stroke();
           g.setLineDash([]);
           g.globalAlpha = 1;
